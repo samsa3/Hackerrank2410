@@ -1,5 +1,5 @@
 {
-  "run_id": "9e50b4cdc76e4b3cb645f83d84c4c763",
+  "run_id": "c41b54a308204412b9a0935e91b3f767",
   "model_provider": "ollama",
   "model_name": "hf.co/Jackrong/Qwen3.5-4B-Claude-4.6-Opus-Reasoning-Distilled-GGUF:Q5_K_M",
   "entries": [
@@ -9,7 +9,7 @@
       "model": "hf.co/Jackrong/Qwen3.5-4B-Claude-4.6-Opus-Reasoning-Distilled-GGUF:Q5_K_M",
       "input_tokens": 940,
       "output_tokens": 459,
-      "latency_ms": 9795.06540298462,
+      "latency_ms": 12696.825981140137,
       "succeeded": true
     },
     {
@@ -17,8 +17,8 @@
       "provider": "ollama",
       "model": "hf.co/Jackrong/Qwen3.5-4B-Claude-4.6-Opus-Reasoning-Distilled-GGUF:Q5_K_M",
       "input_tokens": 1020,
-      "output_tokens": 732,
-      "latency_ms": 13290.71307182312,
+      "output_tokens": 303,
+      "latency_ms": 8310.115098953247,
       "succeeded": true
     },
     {
@@ -27,7 +27,7 @@
       "model": "hf.co/Jackrong/Qwen3.5-4B-Claude-4.6-Opus-Reasoning-Distilled-GGUF:Q5_K_M",
       "input_tokens": 880,
       "output_tokens": 1,
-      "latency_ms": 18214.550733566284,
+      "latency_ms": 19161.05580329895,
       "succeeded": false
     },
     {
@@ -36,7 +36,7 @@
       "model": "hf.co/Jackrong/Qwen3.5-4B-Claude-4.6-Opus-Reasoning-Distilled-GGUF:Q5_K_M",
       "input_tokens": 924,
       "output_tokens": 441,
-      "latency_ms": 10647.03345298767,
+      "latency_ms": 10432.748079299927,
       "succeeded": true
     },
     {
@@ -45,7 +45,7 @@
       "model": "hf.co/Jackrong/Qwen3.5-4B-Claude-4.6-Opus-Reasoning-Distilled-GGUF:Q5_K_M",
       "input_tokens": 789,
       "output_tokens": 345,
-      "latency_ms": 8343.289136886597,
+      "latency_ms": 8255.094051361084,
       "succeeded": true
     },
     {
@@ -54,7 +54,7 @@
       "model": "hf.co/Jackrong/Qwen3.5-4B-Claude-4.6-Opus-Reasoning-Distilled-GGUF:Q5_K_M",
       "input_tokens": 861,
       "output_tokens": 580,
-      "latency_ms": 10469.258785247803,
+      "latency_ms": 10444.491624832153,
       "succeeded": true
     },
     {
@@ -63,7 +63,7 @@
       "model": "hf.co/Jackrong/Qwen3.5-4B-Claude-4.6-Opus-Reasoning-Distilled-GGUF:Q5_K_M",
       "input_tokens": 974,
       "output_tokens": 432,
-      "latency_ms": 10812.204360961914,
+      "latency_ms": 10802.988052368164,
       "succeeded": true
     },
     {
@@ -72,7 +72,7 @@
       "model": "hf.co/Jackrong/Qwen3.5-4B-Claude-4.6-Opus-Reasoning-Distilled-GGUF:Q5_K_M",
       "input_tokens": 1081,
       "output_tokens": 776,
-      "latency_ms": 17113.34228515625,
+      "latency_ms": 16973.114252090454,
       "succeeded": true
     },
     {
@@ -81,7 +81,7 @@
       "model": "hf.co/Jackrong/Qwen3.5-4B-Claude-4.6-Opus-Reasoning-Distilled-GGUF:Q5_K_M",
       "input_tokens": 974,
       "output_tokens": 607,
-      "latency_ms": 12864.884614944458,
+      "latency_ms": 12724.421739578247,
       "succeeded": true
     },
     {
@@ -90,7 +90,7 @@
       "model": "hf.co/Jackrong/Qwen3.5-4B-Claude-4.6-Opus-Reasoning-Distilled-GGUF:Q5_K_M",
       "input_tokens": 1088,
       "output_tokens": 400,
-      "latency_ms": 19486.39941215515,
+      "latency_ms": 19546.76580429077,
       "succeeded": false
     },
     {
@@ -99,7 +99,7 @@
       "model": "hf.co/Jackrong/Qwen3.5-4B-Claude-4.6-Opus-Reasoning-Distilled-GGUF:Q5_K_M",
       "input_tokens": 931,
       "output_tokens": 442,
-      "latency_ms": 9853.8498878479,
+      "latency_ms": 10021.406888961792,
       "succeeded": true
     },
     {
@@ -108,7 +108,7 @@
       "model": "hf.co/Jackrong/Qwen3.5-4B-Claude-4.6-Opus-Reasoning-Distilled-GGUF:Q5_K_M",
       "input_tokens": 1019,
       "output_tokens": 414,
-      "latency_ms": 10167.852640151978,
+      "latency_ms": 10102.6291847229,
       "succeeded": true
     },
     {
@@ -117,7 +117,7 @@
       "model": "hf.co/Jackrong/Qwen3.5-4B-Claude-4.6-Opus-Reasoning-Distilled-GGUF:Q5_K_M",
       "input_tokens": 939,
       "output_tokens": 237,
-      "latency_ms": 8701.210975646973,
+      "latency_ms": 8680.625915527344,
       "succeeded": true
     },
     {
@@ -126,7 +126,7 @@
       "model": "hf.co/Jackrong/Qwen3.5-4B-Claude-4.6-Opus-Reasoning-Distilled-GGUF:Q5_K_M",
       "input_tokens": 977,
       "output_tokens": 641,
-      "latency_ms": 11296.217441558838,
+      "latency_ms": 11322.864532470703,
       "succeeded": true
     },
     {
@@ -135,7 +135,7 @@
       "model": "hf.co/Jackrong/Qwen3.5-4B-Claude-4.6-Opus-Reasoning-Distilled-GGUF:Q5_K_M",
       "input_tokens": 1091,
       "output_tokens": 588,
-      "latency_ms": 12489.928483963013,
+      "latency_ms": 12342.433452606201,
       "succeeded": true
     },
     {
@@ -144,7 +144,7 @@
       "model": "hf.co/Jackrong/Qwen3.5-4B-Claude-4.6-Opus-Reasoning-Distilled-GGUF:Q5_K_M",
       "input_tokens": 1018,
       "output_tokens": 355,
-      "latency_ms": 9310.961723327637,
+      "latency_ms": 9164.702653884888,
       "succeeded": true
     },
     {
@@ -153,7 +153,7 @@
       "model": "hf.co/Jackrong/Qwen3.5-4B-Claude-4.6-Opus-Reasoning-Distilled-GGUF:Q5_K_M",
       "input_tokens": 1098,
       "output_tokens": 355,
-      "latency_ms": 10002.888441085815,
+      "latency_ms": 9810.348272323608,
       "succeeded": true
     },
     {
@@ -162,7 +162,7 @@
       "model": "hf.co/Jackrong/Qwen3.5-4B-Claude-4.6-Opus-Reasoning-Distilled-GGUF:Q5_K_M",
       "input_tokens": 976,
       "output_tokens": 621,
-      "latency_ms": 12712.23258972168,
+      "latency_ms": 12722.193479537964,
       "succeeded": true
     },
     {
@@ -171,7 +171,7 @@
       "model": "hf.co/Jackrong/Qwen3.5-4B-Claude-4.6-Opus-Reasoning-Distilled-GGUF:Q5_K_M",
       "input_tokens": 1090,
       "output_tokens": 610,
-      "latency_ms": 12647.357702255249,
+      "latency_ms": 12624.73726272583,
       "succeeded": true
     },
     {
@@ -180,7 +180,7 @@
       "model": "hf.co/Jackrong/Qwen3.5-4B-Claude-4.6-Opus-Reasoning-Distilled-GGUF:Q5_K_M",
       "input_tokens": 847,
       "output_tokens": 295,
-      "latency_ms": 9199.025392532349,
+      "latency_ms": 9245.97144126892,
       "succeeded": true
     },
     {
@@ -189,7 +189,7 @@
       "model": "hf.co/Jackrong/Qwen3.5-4B-Claude-4.6-Opus-Reasoning-Distilled-GGUF:Q5_K_M",
       "input_tokens": 910,
       "output_tokens": 258,
-      "latency_ms": 9137.639045715332,
+      "latency_ms": 9129.446268081665,
       "succeeded": true
     },
     {
@@ -198,7 +198,7 @@
       "model": "hf.co/Jackrong/Qwen3.5-4B-Claude-4.6-Opus-Reasoning-Distilled-GGUF:Q5_K_M",
       "input_tokens": 1048,
       "output_tokens": 957,
-      "latency_ms": 18393.691301345825,
+      "latency_ms": 18377.209663391113,
       "succeeded": true
     },
     {
@@ -207,7 +207,7 @@
       "model": "hf.co/Jackrong/Qwen3.5-4B-Claude-4.6-Opus-Reasoning-Distilled-GGUF:Q5_K_M",
       "input_tokens": 1215,
       "output_tokens": 827,
-      "latency_ms": 19606.81986808777,
+      "latency_ms": 19547.746896743774,
       "succeeded": false
     },
     {
@@ -216,7 +216,7 @@
       "model": "hf.co/Jackrong/Qwen3.5-4B-Claude-4.6-Opus-Reasoning-Distilled-GGUF:Q5_K_M",
       "input_tokens": 790,
       "output_tokens": 722,
-      "latency_ms": 13392.194747924805,
+      "latency_ms": 13428.160429000854,
       "succeeded": true
     },
     {
@@ -225,7 +225,7 @@
       "model": "hf.co/Jackrong/Qwen3.5-4B-Claude-4.6-Opus-Reasoning-Distilled-GGUF:Q5_K_M",
       "input_tokens": 902,
       "output_tokens": 295,
-      "latency_ms": 10126.213073730469,
+      "latency_ms": 9849.931955337524,
       "succeeded": true
     },
     {
@@ -234,7 +234,7 @@
       "model": "hf.co/Jackrong/Qwen3.5-4B-Claude-4.6-Opus-Reasoning-Distilled-GGUF:Q5_K_M",
       "input_tokens": 988,
       "output_tokens": 317,
-      "latency_ms": 9096.972227096558,
+      "latency_ms": 8964.079856872559,
       "succeeded": true
     },
     {
@@ -243,7 +243,7 @@
       "model": "hf.co/Jackrong/Qwen3.5-4B-Claude-4.6-Opus-Reasoning-Distilled-GGUF:Q5_K_M",
       "input_tokens": 1051,
       "output_tokens": 266,
-      "latency_ms": 10540.338277816772,
+      "latency_ms": 10611.62805557251,
       "succeeded": true
     },
     {
@@ -252,7 +252,7 @@
       "model": "hf.co/Jackrong/Qwen3.5-4B-Claude-4.6-Opus-Reasoning-Distilled-GGUF:Q5_K_M",
       "input_tokens": 901,
       "output_tokens": 417,
-      "latency_ms": 10346.859455108643,
+      "latency_ms": 10303.975105285645,
       "succeeded": true
     },
     {
@@ -261,7 +261,7 @@
       "model": "hf.co/Jackrong/Qwen3.5-4B-Claude-4.6-Opus-Reasoning-Distilled-GGUF:Q5_K_M",
       "input_tokens": 990,
       "output_tokens": 549,
-      "latency_ms": 11720.327615737915,
+      "latency_ms": 11596.872568130493,
       "succeeded": true
     },
     {
@@ -270,7 +270,7 @@
       "model": "hf.co/Jackrong/Qwen3.5-4B-Claude-4.6-Opus-Reasoning-Distilled-GGUF:Q5_K_M",
       "input_tokens": 906,
       "output_tokens": 445,
-      "latency_ms": 9447.222232818604,
+      "latency_ms": 9340.142965316772,
       "succeeded": true
     },
     {
@@ -279,7 +279,7 @@
       "model": "hf.co/Jackrong/Qwen3.5-4B-Claude-4.6-Opus-Reasoning-Distilled-GGUF:Q5_K_M",
       "input_tokens": 995,
       "output_tokens": 971,
-      "latency_ms": 18227.47755050659,
+      "latency_ms": 18267.81439781189,
       "succeeded": true
     },
     {
@@ -288,7 +288,7 @@
       "model": "hf.co/Jackrong/Qwen3.5-4B-Claude-4.6-Opus-Reasoning-Distilled-GGUF:Q5_K_M",
       "input_tokens": 903,
       "output_tokens": 877,
-      "latency_ms": 17666.37635231018,
+      "latency_ms": 17726.64999961853,
       "succeeded": true
     },
     {
@@ -297,7 +297,7 @@
       "model": "hf.co/Jackrong/Qwen3.5-4B-Claude-4.6-Opus-Reasoning-Distilled-GGUF:Q5_K_M",
       "input_tokens": 1060,
       "output_tokens": 822,
-      "latency_ms": 19559.515714645386,
+      "latency_ms": 19449.891090393066,
       "succeeded": false
     },
     {
@@ -306,7 +306,7 @@
       "model": "hf.co/Jackrong/Qwen3.5-4B-Claude-4.6-Opus-Reasoning-Distilled-GGUF:Q5_K_M",
       "input_tokens": 1079,
       "output_tokens": 625,
-      "latency_ms": 12994.092226028442,
+      "latency_ms": 12798.849821090698,
       "succeeded": true
     },
     {
@@ -315,7 +315,7 @@
       "model": "hf.co/Jackrong/Qwen3.5-4B-Claude-4.6-Opus-Reasoning-Distilled-GGUF:Q5_K_M",
       "input_tokens": 1047,
       "output_tokens": 954,
-      "latency_ms": 18473.62756729126,
+      "latency_ms": 18310.030221939087,
       "succeeded": true
     },
     {
@@ -324,7 +324,7 @@
       "model": "hf.co/Jackrong/Qwen3.5-4B-Claude-4.6-Opus-Reasoning-Distilled-GGUF:Q5_K_M",
       "input_tokens": 1233,
       "output_tokens": 734,
-      "latency_ms": 19723.990440368652,
+      "latency_ms": 19845.57795524597,
       "succeeded": false
     },
     {
@@ -333,7 +333,7 @@
       "model": "hf.co/Jackrong/Qwen3.5-4B-Claude-4.6-Opus-Reasoning-Distilled-GGUF:Q5_K_M",
       "input_tokens": 940,
       "output_tokens": 457,
-      "latency_ms": 9604.69102859497,
+      "latency_ms": 9446.616411209106,
       "succeeded": true
     }
   ],
@@ -342,9 +342,9 @@
     "successful_calls": 32,
     "failed_calls": 5,
     "input_tokens_estimate": 36475,
-    "output_tokens_estimate": 19824,
-    "total_tokens_estimate": 56299,
-    "latency_ms": 475476.3152599335
+    "output_tokens_estimate": 19395,
+    "total_tokens_estimate": 55870,
+    "latency_ms": 472380.15723228455
   },
   "estimated_cost_usd": 0.0
 }
