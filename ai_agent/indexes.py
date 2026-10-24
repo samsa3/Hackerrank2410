@@ -92,7 +92,7 @@ class DeterministicEvidenceIndex:
         #  is not a Python package, so load it explicitly by path.
         import importlib.util
 
-        deterministic_path = self.project_root / "code" / "main.py"
+        deterministic_path = self.project_root / "code" / "deterministic_main.py"
         spec = importlib.util.spec_from_file_location("deterministic_main", deterministic_path)
         deterministic = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(deterministic)

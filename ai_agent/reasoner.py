@@ -111,7 +111,7 @@ class SchemaConstrainedModelReasoner(Reasoner):
             user_prompt=user_prompt,
             response_schema=AUDIT_DECISION_SCHEMA,
         )
-        _usage_entry(response, usage_tracker)
+        _usage_entry(response, packet.case_id, usage_tracker)
         decision = _decision_from_response(packet, response)
 
         # If the first result fails basic validation, run exactly one bounded
