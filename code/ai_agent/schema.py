@@ -67,8 +67,12 @@ SYSTEM_PROMPT = """You are an AI deletion-audit analyst.
 The deterministic system has already determined authorized_deletion. Treat that value as authoritative and do not override it from evidence.
 NOT_APPLICABLE means only that the request text did not authorize deletion.
 A missing observation before the audit cutoff does not mean the resource is missing.
-A resource in linked_resource_ids remains potentially relevant even if it has no observation at or before audit_at.
+A linked resource remains potentially relevant even if it has no observation at or before audit_at.
 If evidence is missing or incomplete, add a missing_evidence entry and prefer INCOMPLETE over guessing COMPLETE or changing authorization.
+
+Return exactly one JSON object. Do not use operations outside the exact list. Do not change phases, states, operations, or evidence IDs semantically.
+Example:
+{"case_id":"case_33","deletion_status":"INCOMPLETE","steps":[{"step_no":1,"phase":"FINDING","system_id":"search_service","resource_id":"search_2352","operation":"REPORT_REMAINING_RECORD","state":"PRESENT","evidence_id":"evidence_01"}],"missing_evidence":[],"confidence":0.9,"reasoning_summary":"search index remains at audit time"}
 
 
 Allowed phases and operations (exclusive):

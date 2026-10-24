@@ -46,18 +46,33 @@ class CaseOrchestrator:
         started = datetime.now(timezone.utc)
         packet = self.packet_builder.build_packet(row)
 
-        decision = self.reasoner.reason(
-            packet=packet,
-            allowed_evidence_ids=self.allowed_evidence_ids(packet),
-            client=self.model_client,
-            usage_tracker=usage_tracker,
-        )
+        from ai_agent.schema import AuditDecision
 
-        # Normalize before validation so the model can omit cosmetic numbering.
+        if not getattr(packet, "authorized_deletion", True):
+            decision = AuditDecision(
+                case_id=packet.case_id,
+                deletion_status="NOT_APPLICABLE",
+                steps=[],
+                confidence=1.0,
+                missing_evidence=[],
+                reasoning_summary="deterministic request authorization override",
+            )
+        else:
+            decision = self.reasoner.reason(
+                packet=packet,
+                allowed_evidence_ids=self.allowed_evidence_ids(packet),
+                client=self.model_client,
+                usage_tracker=usage_tracker,
+            )
+
         normalized_steps = []
         for index, step in enumerate(decision.steps or [], start=1):
-            if isinstance(step, dict):
-                normalized_steps.append({**step, "step_no": step.get("step_no", index)})
+            if not isinstance(step, dict):
+                continue
+            normalized = {key: value for key, value in step.items()}
+            normalized["step_no"] = normalized.get("step_no", index)
+            normalized_steps.append(normalized)
+        decision.steps = normalized_steps
 
         errors = []
         row_for_validation = {
