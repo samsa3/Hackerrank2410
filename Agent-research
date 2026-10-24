@@ -1,0 +1,400 @@
+Agent Research Guide
+====================
+Rules for this guide:
+- For every major step: research first, then record choices and rationale.
+- Only force a choice when options are materially uncertain.
+- Explanations must include pros/cons and fit to prior steps.
+
+Step 1 - Use a hybrid deterministic + AI pipeline
+------------------------------------------------
+1. Research conclusion: correct step?
+YES. This is the right first step.
+The challenge requires an AI agent, but the required output is evidence-bound and schema-bound. A pure deterministic parser is fragile but reproducible; a pure LLM can hallucinate or output invalid schema. Research on governed/hybrid RAG and task-specific extraction platforms points to a hybrid design: deterministic ingestion/retrieval plus tightly bounded model reasoning, with rule guardrails and append-only provenance. This fits the previous overall guide because it keeps the reliable deterministic baseline and adds AI only in parts that require synthesis or judgment.
+
+2. Research choices:
+Option A: Single LLM call per case, raw evidence as context.
+Option B: Pure deterministic parsing, no LLM.
+Option C: Hybrid pipeline: deterministic preprocessor + one bounded LLM stage + deterministic validators.
+Decision: Option C.
+This is not an even split. Pure LLM has higher output risk and less control over citations and schema. Pure deterministic code is fast but has already shown sample mismatches and weak generalization. The hybrid option gives the required AI behavior while using deterministic code for identifiers, time filtering, schema enforcement, citation rules, and output ordering.
+
+Fit to prior guide:
+- This preserves the earlier "one LLM agent with clear surrounding boundaries" idea.
+- It also supports the eventual evaluation, retry, fallback, and token-benchmark requirements.
+
+3. Explanation, pros and cons:
+Pros:
+- Identifiers and temporal evidence constraints remain deterministic rather than model-guessed.
+- LLM can reason over compact retrieved context instead of huge raw evidence.
+- Output schema errors can be repaired or rejected before submission.
+- Citations can be traced back to retrieved records.
+Cons:
+- More implementation complexity than one prompt.
+- More moving parts to evaluate and debug.
+Why this choice:
+The submission is judged on schema, identity resolution, evidence references, and remediation ordering. A hybrid bounds where the nondeterministic model can hurt the score. One LLM stage keeps cost and complexity lower than a multi-agent chat graph, while deterministic validation gives governance.
+
+Ask to continue: Can I continue to Step 2? Reply "yes" and Step 2 will follow the same pipeline.
+
+Step 2 - Choose the model and operating budget
+---------------------------------------------
+1. Research conclusion: correct step?
+YES. The previous step gave a hybrid boundary, so the next critical decision is which LLM sits inside that boundary. This must come before prompt design because model supports, mechanism, cost, and speed determine how prompts and retries are written. Research confirms that the model's structured-output support matters more than raw model size; a model with native schema support and low parse failure rates reduces the need for retries and improves determinism.
+
+2. Research findings and choices:
+Key finding: one structured-output test reports that cloud Ollama support may currently be unavailable, while local Ollama supports JSON schema constraints using the format field. For reliable schema compliance, the benchmark highlights Llama 3.1 8B, with Qwen 2.5 7B as a strong quality/speed compromise. Small models can output structured JSON well if the schema is in the prompt and enums constrain choices, but malformed JSON without retry handling is still common.
+
+Option A: Local Ollama model (7B-8B), zero direct API cost.
+Pros: free, controlled environment, JSON schema via Ollama local API, predictable privacy.
+Cons: potentially slow, higher repeat risk, less nuanced reasoning, may take a long time for 518 cases.
+
+Option B: Cloud LLM API (OpenAI/Anthropic/etc.) with native structured/schema support.
+Pros: higher quality, faster, better reliability, easier native JSON support.
+Cons: cost; needs user API key/budget.
+
+Option C: beam:cloud or another managed cloud model.
+Pros: may fit the existing Hermes environment supplied by .env.example.
+Cons: uncertain structured-output support; must verify before use; slower remote calls may still rack up token usage.
+
+Recommendation: verify with a 10-case pilot whether the configured model reliably returns valid JSON. If acceptable and free, use it first. If not, choose Option B only after the user gives a budget and API preference. This is a genuine choice, not a clear winner.
+
+Fit to prior guide:
+- Decision remains compatible with hybrid design because the model stage is replaceable at the API boundary.
+- Token usage reporting will use whichever model is chosen and logged separately.
+
+3. Explanation, pros and cons:
+This step chooses the cost/reliability balance before the code is tied to a specific API. Pros: avoids redesigning prompts around an unsupported model later. Cons: selected model still must be benchmarked on actual case packets, not just generic benchmarks.
+Important warning: model quality and structured-output benchmarks from external sources should be used only as initial heuristics, then validated against this challenge's actual system and evidence schema.
+
+Ask to continue: Can I continue to Step 3? Reply "yes" and Step 3 will follow the same pipeline.
+Step 3 - Keep deterministic parser and schema as a safety layer
+--------------------------------------------------------------
+1. Research conclusion: correct step?
+YES. A safe or guarded extraction system benefits from deterministic parsing and validation after model use. Research shows that LLM extraction can hallucinate values and omit records, while deterministic guardrails such as evidence-span verification, citation linting, JSON schema validation, and provenance checks keep model outputs within allowed boundaries. This fits well after the hybrid architecture step and before polished packet/prompt design.
+
+2. Research findings and choices:
+The safest approach is to make deterministic code define what is valid, not the model. Useful mechanisms include:
+- structured JSON schema on every model output
+- enum constraints for operations, phase, and state
+- quote/span verification after extraction when direct quotes are used
+- citation linting against real evidence IDs
+- NULL/impossible value repair
+- confidence gating and human-review fallback
+- bounded one-pass retry after validation failure
+
+Option A: Validate only output JSON shape.
+Option B: Deep verification of identifiers, temporal filters, evidence IDs, and rule invariants.
+Decision: Option B. Minimal shape validation will silently allow subtly wrong records. Deep deterministic verification is more work but materially decreases wrong final answers.
+
+Fit to prior guide:
+- Supports hybrid architecture by keeping the LLM stage bounded.
+- Preserves exact challenge schema requirements.
+
+3. Explanation, pros and cons:
+Pros:
+- Prevents malformed JSON and invented operations from reaching output.csv.
+- Allows case-by-case retry and audit trails.
+- Provides failure modes that are inspectable: parse error, schema error, citation error, rule violation.
+
+Cons:
+- Adds engineering complexity.
+- Cannot verify semantic correctness of every field; it mainly catches invalidity and grounding failures.
+Why this choice:
+The grader penalizes schema/order and invalid evidence citations. A model should not have the final say over these. Deterministic validators and repair are the natural control layer.
+
+Ask to continue: Can I continue to Step 4? Reply "yes" and Step 4 will follow the same pipeline.
+
+Step 4 - Build offline deterministic retrieval indexes
+----------------------------------------------------
+1. Research conclusion: correct step?
+YES. Offline indexes are the appropriate next step. Research on evidence stores and auditable retrieval shows that operational indexes should be rebuildable, typed, and provenance-pinned: every retrieved item must link back to an evidence file or event, and lack of evidence must not be overstated. For a small dataset of 94 files and 4,000 activity rows, a deterministic local index is sufficient. Semantic/vector search is optional and should never be treated as proof that data does or does not exist.
+2. Research choices:
+Option A: Build vector/semantic retrieval immediately.
+Option B: Build deterministic keyed indices only.
+Decision: Option B.
+Option B is clearly better for Phase 1. The number of evidence files is small enough for exact and typed lookups. The challenge output rules require explicit evidence IDs for citations. A deterministic index maps resources to users, users to identities, evidence files to record states, and identifiers to source events.
+Option A can be added later only as a candidate-discovery aid, never as citation authority.
+Fit to prior guide:
+- Works with the hybrid boundary.
+- Enables case packets in Step 5 and constrains model inputs.
+
+3. Explanation, pros and cons:
+Pros:
+- Rebuildable from committed sources.
+- Exact provenance links for citations.
+- Low-cost and transparent; no hidden embedding provider.
+- Reduces packet size and LLM token cost.
+Cons:
+- Can miss results if parsing or normalization is incomplete.
+- Requires manual handling of new file formats.
+Why this choice:
+The challenge's ground-truth style is evidence-bound and exact. Operational exact indexes fit that better than approximate retrieval as the first implementation.
+
+Ask to continue: Can I continue to Step 5? Reply "yes" and Step 5 will follow the same pipeline.
+
+Step 5 - Assemble compact case packets with provenance
+----------------------------------------------------
+1. Research conclusion: correct step?
+YES. After retrieval and identity safety, the model needs a deliberately assembled packet, not a dump of all evidence. Research on context engineering and evidence bundles consistently stresses that context is assembled: collect eligible, fresh, deduplicated evidence, attach provenance, include coverage gaps, and enforce a token budget. This matches the challenge because citations and temporal evidence are required and arbitrary text dumps would risk hallucination and cost.
+
+2. Research choices:
+Option A: Send all evidence files or all records per user to the LLM.
+Option B: Build a compact case packet using exact candidate records and omissions.
+Decision: Option B.
+Option B is clearly better. Candidate records after deterministic indexing are small, typed, and have source provenance. This reduces token cost and makes the model's judgment about missing evidence more meaningful. Full evidence dumps are contrary to "context should be assembled, not dumped" and will increase hallucination risk.
+
+3. Packet contents:
+- request metadata
+- authorized deletion conclusion baseline
+- current and historical identity aliases
+- candidate evidence records captured on or before audit_at
+- data categories and required treatments
+- source evidence files, timestamps, and capture times
+- explicitly listed omitted evidence and why
+- required schema instructions
+- response constraints (allowed operations, sorting, empty citations, etc.)
+
+4. Explanation, pros and cons:
+Pros:
+- Better citation accuracy and lower cost.
+- Explicit late-evidence omission improves temporal correctness.
+- Easier to audit what the model knew.
+Cons:
+- Requires good deterministic filtering.
+- Missing candidate retrieval strategy can harm recall.
+
+Ask to continue: Can I continue to Step 6? Reply "yes" and Step 6 will follow the same pipeline.
+
+Step 6 - Define the schema, enums, and prompt design
+---------------------------------------------------
+1. Research conclusion: correct step?
+YES. Prompt/schema design should come after the model choice and after assembling a bounded packet. Research supports schema-first structured outputs, where the JSON schema itself acts as a prompt. It also warns that models can still fail schema constraints, especially if output cap or intelligence is poor. A Pydantic or equivalent validator plus one bounded repair loop is the right architecture.
+
+2. Research choices:
+Option A: Describe output only in natural-language instructions.
+Option B: Use native schema where available and Pydantic validation + repair.
+Decision: Option B.
+Research from schema-first LLM application guidance shows that natural language schema instructions are the least reliable. Enums centralize allowed values, nullable fields handle unknown data without guessing, descriptions carry rules, and `additionalProperties=false` prevents drift. One bounded repair is justified; infinite retry loops are inappropriate.
+
+3. Proposed schema design:
+- Top model returns case-level metadata and a flat structure that deterministic code converts into ordered steps. Alternatively, the LLM returns a typed list of decision objects.
+- Key enums: COMPLETE, INCOMPLETE, NOT_APPLICABLE.
+- Step fields exactly as required: step_no, phase, system_id, resource_id, operation, state, evidence_id.
+- Phase-to-operation constraints:
+  * FINDING: report remaining/PII/active flow/restore risk
+  * REMEDIATION: disable/block/delete/redact/anonymize
+  * VERIFICATION: expected post-state checks
+- evidence_id: manifest file ID or empty.
+- Nullable/special-cased proper: confidence, missing evidence, notes if needed.
+- `temperature: 0`.
+- `num_predict` or `max_tokens` must be capped.
+- Required compact instructions on citation, phase ordering, and no useful guesses.
+
+4. Explanation, pros and cons:
+Pros:
+- Model reads schema with field descriptions and has fewer interpretation choices.
+- Enumerate "null" or empty cases explicitly, which discourages fabricated data and encourages "unknown"/fallback handling.
+- Repair can report exact validation errors and prevent changes to already-valid fields.
+Cons:
+- Models still may make semantic mistakes inside valid fields.
+- Schema design takes careful hand-tuning.
+- Some fields (evidence_id) need exact cross-referencing that should still be deterministically checked after output.
+
+Ask to continue: Can I continue to Step 7? Reply "yes" and Step 7 will follow the same pipeline.
+
+Step 7 - Build end-to-end orchestration, retries, and validation
+----------------------------------------------------------------
+1. Research conclusion: correct step?
+YES. Once indexes, packets, and schemas exist, the remaining core task is connecting everything into a repeatable case loop. Research on agent harnesses and reliability consistently recommends schema-validated retries, transient-error backoff, idempotent execution, bounded cost/steps, append-only traces, and safe refusal when evidence or validation fails. This is the natural next stage after prompt/schema design.
+
+2. Research choices:
+Option A: Let the LLM call extra tools in a free-form loop.
+Option B: Deterministic orchestrator with one bounded model stage per case.
+Decision: Option B.
+For this challenge, the target output is highly structured and constrained, so a tightly controlled single pass is more predictable than a free-form tool loop. The LLM should analyze a structured packet and return one schema-constrained object. Retries should target exact validation errors and be limited to 1-2 attempts.
+
+3. Orchestrator requirements:
+- Run idempotently by case.
+- Log every packet, validation error, repair prompt, retry, and final decision.
+- Apply rule-level post-processing after LLM output: status logic, phase ordering, step numbering, citation requirements.
+- Halt on cost or processing budget rather than silently degrade.
+- Fail per-case rather than crashing globally when one invalid result is unrepairable.
+- Support mock/no-model runs for regression testing.
+
+4. Explanation, pros and cons:
+Pros:
+- Bounded complexity and reproducibility.
+- Clear failure taxonomy: schema, validation, citation, temporal, or rule breach.
+- Easier offline evaluation and token usage reports.
+Cons:
+- Less autonomous "agent feel."
+- Retries may still fail if model is weak.
+Why this choice:
+The challenge rewards correctness and schema quality more than agent autonomy. A deterministic orchestrator around a single model stage captures that tradeoff.
+
+Ask to continue: Can I continue to Step 8? Reply "yes" and Step 8 will follow the same pipeline.
+
+Step 8 - Build an evaluation harness and at least 3 custom cases
+---------------------------------------------------------------
+1. Research conclusion: correct step?
+YES. Evaluation should become first-class even before the final run. Research on LLM/RAG evaluation harnesses suggests deterministic, no-judge scoring for reproducibility, citation-validity checks, exact step and schema checks, abstention/refusal behavior, and regression comparison against a committed baseline. The challenge explicitly requires case-level, step-level, field-level, and sequence accuracy, along with at least 3 additional evaluation cases and failure/improvement notes.
+
+2. Research choices:
+Option A: rely on subjective quality.
+Option B: deterministic evaluator with sample gold output and custom cases.
+Decision: Option B.
+Option B is clearly better. It produces objective comparisons and makes regressions visible. An LLM judge can add nuance only as a later enhancement; it should not be the only gate.
+
+3. Evaluation structure:
+- Validate all 518 output rows and schema.
+- Exact-match sample 32 against sample_output.csv.
+- Create at least three custom custom cases with expected outputs:
+  * one unauthorized access request -> NOT_APPLICABLE
+  * one multilingual deletion with historical email
+  * one incomplete case with multiple recreation risks
+- Track metrics:
+  * status accuracy
+  * step set match
+  * field accuracy
+  * phase/order accuracy
+  * citation validity
+  * average steps per type
+- Compare candidate run vs baseline.
+- Record failure modes and changes made.
+
+4. Explanation, pros and cons:
+Pros:
+- Required challenge deliverable becomes concrete.
+- Regression failures are visible.
+- Failures can be mapped to improvements.
+Cons:
+- Deterministic scoring misses semantic nuance.
+- Golden cases require careful creation.
+
+Ask to continue: Can I continue to Step 9? Reply "yes" and Step 9 will follow the same pipeline.
+
+Step 9 - Final run, usage report, and submission packaging
+---------------------------------------------------------
+1. Research conclusion: correct step?
+YES. The challenge explicitly requires output.csv, code.zip, chat transcript, evaluation reports, and usage report. Researching packaging after evaluation ensures artifact requirements match the final code and results rather than aspirational draft notes.
+
+2. Required artifacts and validations:
+- output.csv with exactly 518 rows sorted by case_id.
+- services and output schema valid.
+- evaluation/evaluation_report.md with status accuracy, step and field accuracy, sequence, 3+ custom cases, failures and improvements.
+- evaluation/usage_report.md with provider/model names, calls, input/output tokens, averages, per-request and total costs, per-model totals.
+- code on branch agent-work.
+- log.txt transcript.
+- zip containing README.md and code (without dataset/virtual envs/secrets).
+
+3. Explanation, pros and cons:
+Pros:
+- Forces evidence that the solution ran end to end.
+- Aligns submission with official rules.
+- Makes evaluation reproducible.
+Cons:
+- Reporting can be missed if left to end.
+- Token counts must be collected during the final run, not reconstructed later.
+Why this choice:
+Official rules state `code.zip` must include evaluation reports and usage file, so final packaging is a required step, not optional polish.
+
+Ask to continue: Can I continue to Step 10 (optional final review and test plan), or is the guide complete enough for you? Reply "yes" if you want Step 10.
+
+Step 10 - Final review, test plan, and release gate
+---------------------------------------------------
+1. Research conclusion: correct step?
+YES. Research on agent testing says final release should be gated by schema validity, citation validity, mutation and idempotency checks, regression against baseline, cost latency budgets, replayable traces, and human ownership of residual risk. This is the proper last step before packaging or delivery.
+
+2. Research choices:
+Option A: Only a one-time manual review.
+Option B: Define structured gates and pass/fail criteria.
+Decision: Option B.
+Option B is materially better. Manual review is insufficient because agents fail silently. Every major solution change should be routable through gates.
+
+3. Final test plan:
+A. Structural gates:
+- JSON validity for all output.
+- Enum and operation constraints.
+- step_no strict increment.
+- phase/ordering rules.
+- exact 518 rows and sorting.
+B. Evidence gates:
+- evidence IDs belong to the manifest for each case.
+- findings cite evidence captured <= audit_at.
+- future complete verification uses no unsupported future evidence.
+- no prohibited mutation risk.
+C. Identity and resolution gates:
+- authorized vs unauthorized classification.
+- historical identity match and stable user_id linkage.
+- high-confidence only when exact identity is present.
+D. Regression gates:
+- exact sample output comparison.
+- custom case comparison.
+- baseline run comparison if the model or parser changes.
+- separate run id and trace logs for each case.
+E. Cost and runtime gates:
+- token count, latency containers/routes, cost ceilings.
+- estimated error-rate / retry-rate visibility.
+F. Safety and content gate:
+- redact PII from logs/traces.
+- no API keys in submitted files.
+- deterministic fallback on missing evidence.
+G. Release decision matrix:
+- PASS = all applicable gates pass and evidence attachments exist.
+- CONDITIONAL = one minor gate with owner and expiry.
+- FAIL = any major schema, identity, evidence, or safety failure.
+- Approval owner explicitly recorded.
+
+4. Explanation, pros and cons:
+Pros:
+- Converts vague "quality" into release decisions.
+- Makes rollback and replay concrete.
+- Builds required evidence for AI interview and submission.
+- Prevents regressions from settling as accepted.
+
+Cons:
+- Adds maintenance overhead.
+- Can feel heavy for a hackathon.
+
+Why this choice:
+The challenge is evaluable against exact schemas and expected steps, so gating is worth more than only iterative eyeballing.
+
+Final status: guide initialized with 10 steps. Future work can implement AI-powered next-generation while retaining deterministic rules and evidence infrastructure. Reopen this research file before adding any model-based reasoning.
+
+Step 8 - Build an evaluation harness and at least 3 custom cases
+--------------------------------------------------------------
+1. Research conclusion: correct step?
+YES. Evaluation should be deterministic, regression-friendly, and capable of
+reporting both status and step-level differences. Research consistently favors
+deterministic scorers, baseline comparison, and custom edge cases before final packaging.
+
+2. Research choices:
+Option A: only assess aggregate quality by hand.
+Option B: implement a structured evaluation harness with status accuracy, exact step matches, citation validity, and schema validity.
+Decision: Option B.
+Option B is better because the challenge explicitly asks for step-level, field-level, sequence, custom cases, and failure/improvement documentation.
+
+3. Implementation notes:
+- ai_agent/evaluation.py defines MetricCounts and EvaluationReport.
+- collect_metrics compares actual output to expected rows and produces report data.
+- citation_valid checks that every cited evidence ID exists in the manifest or is empty.
+- make_custom_cases includes 3 provisional cases pending evidence-backed expected values.
+- The harness does not use an LLM judge, keeping results reproducible.
+
+4. Evidence rule reminder:
+Every finding must cite real participant-visible evidence captured at or before audit_at. Future verification and remediation steps for incomplete cases should carry empty evidence IDs.
+
+5. Explanation, pros and cons:
+Pros:
+- catches schema and citation regressions directly
+- produces report data needed for Code Agent and interview
+Cons:
+- deterministic scoring cannot catch every semantic nuance
+- custom cases currently require evidence-backed expected values
+
+Obstacles and dependencies:
+- sample comparison differs at time of writing because the AI pipeline is still in fallback mode
+- exact custom expected rows still need calibration against controlled evidence
+- generated model traces are in append-only JSONL so a run can be replayed; if a remote model is unavailable, fallback records allow downstream code to continue without producing invalid final rows
+
+Ask to continue: Can I continue to Step 9? Reply "YES" and Step 9 will follow the same pipeline.
