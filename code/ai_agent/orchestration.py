@@ -46,7 +46,7 @@ class CaseOrchestrator:
         started = datetime.now(timezone.utc)
         packet = self.packet_builder.build_packet(row)
 
-        from ai_agent.schema import AuditDecision
+        from .schema import AuditDecision
 
         original_model_status = None
         if getattr(packet, "authorized_deletion", True):
@@ -67,7 +67,7 @@ class CaseOrchestrator:
                     (decision.reasoning_summary or "") + " | model_status=" + str(original_model_status)
                 ).strip(" |")
         else:
-            from ai_agent.schema import AuditDecision
+            from .schema import AuditDecision
 
             decision = AuditDecision(
                 case_id=packet.case_id,
