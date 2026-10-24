@@ -81,8 +81,10 @@ class Reasoner:
 class SchemaConstrainedModelReasoner(Reasoner):
     """One model stage plus one bounded repair attempt."""
 
-    def __init__(self, max_repair_calls: int = 1) -> None:
+    def __init__(self, max_repair_calls: int = 1, max_output_tokens: int = 2048) -> None:
         self.max_repair_calls = max(1, max_repair_calls)
+        # Cap token use. 4k+ tokens often return unfinished JSON for local models.
+        self.max_output_tokens = max(256, min(max_output_tokens, 2048))
 
     @staticmethod
     def _validation_errors(decision: AuditDecision, allowed_evidence_ids: Set[str]) -> List[str]:
@@ -110,6 +112,7 @@ class SchemaConstrainedModelReasoner(Reasoner):
             system_prompt=SYSTEM_PROMPT,
             user_prompt=user_prompt,
             response_schema=AUDIT_DECISION_SCHEMA,
+            options={"num_predict": self.max_output_tokens},
         )
         _usage_entry(response, packet.case_id, usage_tracker)
         decision = _decision_from_response(packet, response)
@@ -131,6 +134,7 @@ errors name.
                 system_prompt=SYSTEM_PROMPT,
                 user_prompt=repair_prompt,
                 response_schema=AUDIT_DECISION_SCHEMA,
+                options={"num_predict": self.max_output_tokens},
             )
             _usage_entry(repaired, packet.case_id, usage_tracker)
             repaired_decision = _decision_from_response(packet, repaired)

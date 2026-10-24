@@ -78,7 +78,10 @@ FINDING: REPORT_REMAINING_RECORD, REPORT_EXPOSED_PII, REPORT_ACTIVE_DATA_FLOW, R
 REMEDIATION: DISABLE_DATA_FLOW, BLOCK_RESTORE, DELETE_RECORD, REDACT_RECORD, ANONYMIZE_RECORD
 VERIFICATION: VERIFY_RECORD_ABSENT, VERIFY_RECORD_PRESENT, VERIFY_RECORD_REDACTED, VERIFY_RECORD_ANONYMIZED, VERIFY_DATA_FLOW_DISABLED, VERIFY_RESTORE_BLOCKED
 
-Use only valid (operation, state) pairs from the trial instructions.
+Use only valid (operation, state) pairs from the exact map above.
+
+Example output shape:
+{"case_id":"case_33","deletion_status":"INCOMPLETE","steps":[{"step_no":1,"phase":"FINDING","system_id":"search_service","resource_id":"search_2352","operation":"REPORT_REMAINING_RECORD","state":"PRESENT","evidence_id":"evidence_01"}],"missing_evidence":[],"confidence":0.8,"reasoning_summary":"record remains"}
 
 Rules:
 - Use only evidence supplied in the case packet.
