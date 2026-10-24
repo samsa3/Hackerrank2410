@@ -73,15 +73,68 @@ class AIAuditPipeline:
 
         successful_rows: List[Dict[str, str]] = []
         validation_error_count = 0
+        consecutive_failures = 0
+        circuit_breaker_threshold = int(os.getenv("AI_CIRCUIT_BREAKER_THRESHOLD", "5"))
 
         for row in rows:
-            trace, result_row = self.orchestrator.run_case(row, run_id=run_id, usage_tracker=tracker)
+            # A transient, Ollama-specific timeout used to kill the whole batch.
+            # Flatten it into a per-case failure and let the breaker decide after
+            # several bad rows.
+            trace = None
+            result_row = None
+            try:
+                trace, result_row = self.orchestrator.run_case(row, run_id=run_id, usage_tracker=tracker)
+            except Exception as exc:
+                trace = {
+                    "run_id": run_id,
+                    "case_id": row["case_id"],
+                    "packet_summary": {},
+                    "model_provider": self.config.model.resolved_provider(),
+                    "decision": {},
+                    "validation_errors": [f"per-case runtime error: {exc}"],
+                    "elapsed_ms": 0.0,
+                }
+                result_row = None
+
+            if trace is None:
+                trace = {
+                    "run_id": run_id,
+                    "case_id": row["case_id"],
+                    "packet_summary": {},
+                    "model_provider": self.config.model.resolved_provider(),
+                    "decision": {},
+                    "validation_errors": ["per-case runtime error: no trace returned"],
+                    "elapsed_ms": 0.0,
+                }
+
             if trace_write:
                 self.orchestrator.append_trace(self.config.trace_path, trace)
             if trace.get("validation_errors"):
                 validation_error_count += 1
+                consecutive_failures += 1
+            else:
+                consecutive_failures = 0
             if result_row is not None:
                 successful_rows.append(result_row)
+
+            if consecutive_failures >= circuit_breaker_threshold:
+                # Mark any remaining cases as deterministic fallback instead of
+                # continuing a likely broken model loop.
+                breaker_trace = {
+                    "run_id": run_id,
+                    "case_id": row["case_id"],
+                    "packet_summary": {},
+                    "model_provider": self.config.model.resolved_provider(),
+                    "decision": {},
+                    "validation_errors": [
+                        "circuit breaker opened after "
+                        + str(consecutive_failures)
+                        + " consecutive failures; remaining work skipped"
+                    ],
+                    "elapsed_ms": 0.0,
+                }
+                self.orchestrator.append_trace(self.config.trace_path, breaker_trace)
+                break
 
         if final_output_write and successful_rows:
             self.orchestrator.write_output(self.config.output_path, successful_rows)

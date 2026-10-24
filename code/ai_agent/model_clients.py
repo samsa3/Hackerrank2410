@@ -125,12 +125,19 @@ class OllamaModelClient:
         self.model = model
         self.timeout_seconds = timeout_seconds
 
-    def health_check(self) -> Optional[str]:
-        try:
-            with urllib.request.urlopen(self.base_url + "/api/tags", timeout=5) as response:
-                return None if response.status == 200 else f"HTTP {response.status}"
-        except Exception as exc:
-            return str(exc)
+    def health_check(self, attempts: int = 3, delay_seconds: float = 1.0) -> Optional[str]:
+        last_error = None
+        for attempt in range(1, max(1, attempts) + 1):
+            try:
+                with urllib.request.urlopen(self.base_url + "/api/tags", timeout=5) as response:
+                    if response.status == 200:
+                        return None
+                    last_error = f"HTTP {response.status}"
+            except Exception as exc:
+                last_error = str(exc)
+            if attempt < attempts:
+                time.sleep(delay_seconds)
+        return last_error
 
     def complete(
         self,
