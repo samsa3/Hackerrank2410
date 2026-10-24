@@ -77,3 +77,86 @@ branch=agent-work
 repo_root=/root/Hackerrank_challenge
 worktree=main
 parent_agent=none
+
+## [2026-10-24T17:20:00Z] Retroactive major turn summaries
+
+User Prompt (verbatim, secrets redacted):
+Provided GitHub PAT in sandbox and asked reading problem_statement.md and other challenge documents before coding on my own branch.
+
+Agent Response Summary:
+Read AGENTS.md, problem statement, dataset contracts, and challenge rules. Cloned/inspected the starter repository and identified the 518-case dataset and evidence structure.
+
+Actions:
+* Read repository documentation
+* Inspected dataset and evidence
+
+Context:
+tool=hermes-agent
+model=beam:cloud
+branch=agent-work
+repo_root=/root/Hackerrank_challenge
+worktree=main
+parent_agent=none
+
+## [2026-10-24T17:20:10Z] Retroactive major turn summary
+
+User Prompt (verbatim, secrets redacted):
+Instructed creation of an own branch before solution work; asked using the PAT-backed repository.
+
+Agent Response Summary:
+Created the local agent-work branch, implemented the deterministic baseline, and later pushed it to the writable samsa3/Hackerrank2410 remote.
+
+Actions:
+* Created agent-work
+* Committed baseline implementation
+* Pushed branch when writable remote was identified
+
+Context:
+tool=hermes-agent
+model=beam:cloud
+branch=agent-work
+repo_root=/root/Hackerrank_challenge
+worktree=main
+parent_agent=none
+
+## [2026-10-24T17:20:20Z] Retroactive major turn summary
+
+User Prompt (verbatim, secrets redacted):
+Requested replacing the deterministic-only approach with an AI-powered solution and a step-by-step guide plus follow-up implementation.
+
+Agent Response Summary:
+Created Agent-research, then implemented the governed hybrid AI audit agent scaffold in ai_agent using deterministic preprocessing, packet assembly, validation, model client abstraction, evaluation harness, reports, and packaging preparation.
+
+Actions:
+* Created Agent-research
+* Created ai_agent package
+* Created evaluation reports
+* Committed and pushed after-the-fact verification entries
+
+Context:
+tool=hermes-agent
+model=beam:cloud
+branch=agent-work
+repo_root=/root/Hackerrank_challenge
+worktree=main
+parent_agent=none
+
+## [2026-10-24T17:35:00Z] Confirming append-only log policy
+
+User Prompt (verbatim, secrets redacted):
+leave as is. and from nwo on log everything in log.txt
+
+Agent Response Summary:
+Confirmed that log.txt will remain append-only. Added this turn for ongoing AGENTS.md compliance and answered without deleting or rewriting prior entries.
+
+Actions:
+* Appended current turn
+* Confirmed append-only policy
+
+Context:
+tool=hermes-agent
+model=beam:cloud
+branch=agent-work
+repo_root=/root/Hackerrank_challenge
+worktree=main
+parent_agent=none

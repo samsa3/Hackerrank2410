@@ -17,7 +17,7 @@ if str(PROJECT_ROOT) not in __import__("sys").path:
     __import__("sys").path.insert(0, str(PROJECT_ROOT))
 
 from ai_agent.packets import CasePacket
-from ai_agent.packets import CasePacket as LegacyPacket
+
 
 
 STEP_SCHEMA = {
@@ -63,6 +63,22 @@ AUDIT_DECISION_SCHEMA = {
 }
 
 SYSTEM_PROMPT = """You are an AI deletion-audit analyst.
+
+The deterministic system has already determined authorized_deletion. Treat that value as authoritative and do not override it from evidence.
+NOT_APPLICABLE means only that the request text did not authorize deletion.
+A missing observation before the audit cutoff does not mean the resource is missing.
+A resource in linked_resource_ids remains potentially relevant even if it has no observation at or before audit_at.
+If evidence is missing or incomplete, add a missing_evidence entry and prefer INCOMPLETE over guessing COMPLETE or changing authorization.
+
+
+Allowed phases and operations (exclusive):
+Allowed state values: REPORT_REMAINING_RECORD->PRESENT; REPORT_EXPOSED_PII->PRESENT; REPORT_ACTIVE_DATA_FLOW->ACTIVE; REPORT_RESTORE_RISK->ACTIVE; DISABLE_DATA_FLOW->DISABLED; BLOCK_RESTORE->BLOCKED; DELETE_RECORD->ABSENT; REDACT_RECORD->REDACTED; ANONYMIZE_RECORD->ANONYMIZED; VERIFY_RECORD_ABSENT->ABSENT; VERIFY_RECORD_PRESENT->PRESENT; VERIFY_RECORD_REDACTED->REDACTED; VERIFY_RECORD_ANONYMIZED->ANONYMIZED; VERIFY_DATA_FLOW_DISABLED->DISABLED; VERIFY_RESTORE_BLOCKED->BLOCKED.
+
+FINDING: REPORT_REMAINING_RECORD, REPORT_EXPOSED_PII, REPORT_ACTIVE_DATA_FLOW, REPORT_RESTORE_RISK
+REMEDIATION: DISABLE_DATA_FLOW, BLOCK_RESTORE, DELETE_RECORD, REDACT_RECORD, ANONYMIZE_RECORD
+VERIFICATION: VERIFY_RECORD_ABSENT, VERIFY_RECORD_PRESENT, VERIFY_RECORD_REDACTED, VERIFY_RECORD_ANONYMIZED, VERIFY_DATA_FLOW_DISABLED, VERIFY_RESTORE_BLOCKED
+
+Use only valid (operation, state) pairs from the trial instructions.
 
 Rules:
 - Use only evidence supplied in the case packet.

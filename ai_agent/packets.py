@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import importlib.util
 import sys
-from collections import defaultdict
+
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -49,7 +49,7 @@ class CasePacket:
     identity_notes: List[str] = field(default_factory=list)
 
 # Load the existing deterministic helper module without needing `code/__init__.py`.
-_DETERMINISTIC_PATH = PROJECT_ROOT / "code" / "main.py"
+_DETERMINISTIC_PATH = PROJECT_ROOT / "code" / "deterministic_main.py"
 _deterministic_spec = importlib.util.spec_from_file_location("deterministic_main", _DETERMINISTIC_PATH)
 _deterministic = importlib.util.module_from_spec(_deterministic_spec)
 _deterministic_spec.loader.exec_module(_deterministic)
