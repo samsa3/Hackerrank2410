@@ -48,7 +48,27 @@ class CaseOrchestrator:
 
         from ai_agent.schema import AuditDecision
 
-        if not getattr(packet, "authorized_deletion", True):
+        original_model_status = None
+        if getattr(packet, "authorized_deletion", True):
+            decision = self.reasoner.reason(
+                packet=packet,
+                allowed_evidence_ids=self.allowed_evidence_ids(packet),
+                client=self.model_client,
+                usage_tracker=usage_tracker,
+            )
+            original_model_status = decision.deletion_status
+            # Deterministic evidence status takes precedence because model output can
+            # confuse "existing" records with successful deletion. Keep AI result only
+            # for trace diagnostics and missing evidence context.
+            decision.deletion_status = self.packet_builder.deterministic_status(packet, self.index)
+            decision.missing_evidence = list(dict.fromkeys((decision.missing_evidence or []) + (decision.missing_evidence or [])))
+            if original_model_status is not None:
+                decision.reasoning_summary = (
+                    (decision.reasoning_summary or "") + " | model_status=" + str(original_model_status)
+                ).strip(" |")
+        else:
+            from ai_agent.schema import AuditDecision
+
             decision = AuditDecision(
                 case_id=packet.case_id,
                 deletion_status="NOT_APPLICABLE",
@@ -56,13 +76,6 @@ class CaseOrchestrator:
                 confidence=1.0,
                 missing_evidence=[],
                 reasoning_summary="deterministic request authorization override",
-            )
-        else:
-            decision = self.reasoner.reason(
-                packet=packet,
-                allowed_evidence_ids=self.allowed_evidence_ids(packet),
-                client=self.model_client,
-                usage_tracker=usage_tracker,
             )
 
         normalized_steps = []
