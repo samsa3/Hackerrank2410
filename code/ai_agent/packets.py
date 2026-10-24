@@ -93,14 +93,26 @@ class CasePacketBuilder:
 
     @staticmethod
     def _to_evidence_record(record: IndexedRecord, user_id: Optional[str]) -> EvidenceRecord:
-        # Keep fields compact but provenance-preserving.
+        # Keep fields compact and relevant to the model rather than raw record text.
+        allowed = {
+            "customer_reference", "user_id", "customer_email", "requester_email",
+            "email", "full_name", "name", "phone", "email_hash", "status_code",
+            "result", "status", "restore_allowed", "enabled", "record_type",
+            "collection", "subject_reference", "retention_until", "message_excerpt",
+            "object_key", "lookup_key",
+        }
+        compact = {}
+        for key, value in (record.fields or {}).items():
+            if key in allowed and value not in (None, "", "null", "none"):
+                compact[key] = value
+
         return EvidenceRecord(
             system_id=record.system_id,
             resource_id=record.resource_id,
             data_category=record.data_category,
             source_file_id=record.file_id,
             observed_at=record.observed_at,
-            fields=record.fields,
+            fields=compact,
         )
 
     def build_packet(self, request_row: Dict[str, str]) -> CasePacket:
