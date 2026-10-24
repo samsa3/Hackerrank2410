@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from code.ai_agent.validators import validate_output_row
+from .validators import validate_output_row
 
 
 class CaseOrchestrator:
@@ -18,10 +18,10 @@ class CaseOrchestrator:
     def __init__(self, config, reasoner, model_client=None) -> None:
         self.config = config
         self.index = None
-        from code.ai_agent.indexes import DeterministicEvidenceIndex
+        from .indexes import DeterministicEvidenceIndex
         self.index = DeterministicEvidenceIndex(config.project_root)
         self.index.load()
-        from code.ai_agent.packets import CasePacketBuilder
+        from .packets import CasePacketBuilder
         self.packet_builder = CasePacketBuilder(self.index)
         self.reasoner = reasoner
         self.model_client = model_client

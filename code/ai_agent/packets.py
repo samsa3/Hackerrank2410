@@ -22,7 +22,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from dataclasses import dataclass, field
 
-from code.ai_agent.indexes import DeterministicEvidenceIndex, IndexedRecord, parse_timestamp
+from .indexes import DeterministicEvidenceIndex, IndexedRecord, parse_timestamp
 
 
 @dataclass
