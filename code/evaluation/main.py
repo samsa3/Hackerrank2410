@@ -12,7 +12,7 @@ def main() -> int:
         return 1
     print("evaluation/evaluation_report.md contains placeholder metrics and custom cases.")
     print("Usage totals should be aligned against the saved run trace:")
-    print(PROJECT_ROOT / "ai_agent" / "ai_agent_run_trace.jsonl")
+    print(PROJECT_ROOT / "code" / "ai_agent" / "ai_agent_run_trace.jsonl")
     print("Manual review is required before submission.")
     return 0
 

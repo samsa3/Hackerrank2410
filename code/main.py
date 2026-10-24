@@ -16,8 +16,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
-if str(ROOT / "ai_agent") not in sys.path:
-    sys.path.insert(0, str(ROOT / "ai_agent"))
+if str(ROOT / "code/ai_agent") not in sys.path:
+    sys.path.insert(0, str(ROOT / "code/ai_agent"))
 
 
 def main() -> int:
@@ -28,8 +28,8 @@ def main() -> int:
     write_output = os.getenv("MAIN_WRITE_OUTPUT", "false").lower() in {"1", "true", "yes"}
 
     try:
-        from ai_agent.config import default_config
-        from ai_agent.pipeline import build_pipeline
+        from code.ai_agent.config import default_config
+        from code.ai_agent.pipeline import build_pipeline
 
         config = default_config()
         pipeline = build_pipeline(config)

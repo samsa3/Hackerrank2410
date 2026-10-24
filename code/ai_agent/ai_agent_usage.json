@@ -1,0 +1,26 @@
+{
+  "run_id": "2a02d1a92b5d44118df23a3e688ca0ca",
+  "model_provider": "ollama",
+  "model_name": "hf.co/Jackrong/Qwen3.5-4B-Claude-4.6-Opus-Reasoning-Distilled-GGUF:Q5_K_M",
+  "entries": [
+    {
+      "case_id": "case_33",
+      "provider": "ollama",
+      "model": "hf.co/Jackrong/Qwen3.5-4B-Claude-4.6-Opus-Reasoning-Distilled-GGUF:Q5_K_M",
+      "input_tokens": 857,
+      "output_tokens": 345,
+      "latency_ms": 11944.961071014404,
+      "succeeded": true
+    }
+  ],
+  "summary": {
+    "calls": 1,
+    "successful_calls": 1,
+    "failed_calls": 0,
+    "input_tokens_estimate": 857,
+    "output_tokens_estimate": 345,
+    "total_tokens_estimate": 1202,
+    "latency_ms": 11944.961071014404
+  },
+  "estimated_cost_usd": 0.0
+}
