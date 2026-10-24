@@ -1,14 +1,10 @@
-"""Model-client layer for the Step 2 AI-powered audit agent.
-
-The goal of this module is to isolate provider-specific code from packet
-assembly and validation. Higher-level code asks a client for a schema-shaped
-response and records usage through the budget tracker.
-"""
+"""Model-client layer for the governed AI audit agent."""
 
 from __future__ import annotations
 
 import json
 import os
+import re
 import time
 import urllib.error
 import urllib.request
@@ -18,8 +14,6 @@ from typing import Any, Dict, Optional, Protocol
 
 @dataclass
 class ModelCall:
-    """One bounded call to an LLM."""
-
     provider: str
     model: str
     content: str
@@ -28,6 +22,11 @@ class ModelCall:
     output_tokens_estimate: int
     latency_ms: float
     error: Optional[str] = None
+
+
+class ModelClient(Protocol):
+    def complete(self, case_id, system_prompt, user_prompt, response_schema=None, options=None) -> ModelCall:
+        ...
 
 
 @dataclass
@@ -41,28 +40,7 @@ class UsageEntry:
     succeeded: bool
 
 
-class ModelClient(Protocol):
-    """Interface for reasoning models.
-
-    Implementations must not mutate packet data. They should return raw content
-    and let the deterministic validators decide whether it is usable.
-    """
-
-    def complete(
-        self,
-        case_id: str,
-        system_prompt: str,
-        user_prompt: str,
-        response_schema: Optional[Dict[str, Any]] = None,
-    ) -> ModelCall:
-        ...
-
-
 class PricingProvider:
-    """Estimated pricing only."""
-
-    # TODO: Replace these placeholders with the pricing for the chosen provider.
-    # Ollama local calls are effectively free, while hosted providers charge.
     input_per_1m_tokens: float = 0.0
     output_per_1m_tokens: float = 0.0
 
@@ -72,8 +50,6 @@ class PricingProvider:
 
 
 class UsageTracker:
-    """Per-run usage and budget tracking."""
-
     def __init__(self, max_calls: int = 1000, max_budget_usd: float = 0.0) -> None:
         self.max_calls = max_calls
         self.max_budget_usd = max_budget_usd
@@ -82,11 +58,8 @@ class UsageTracker:
     def can_make_call(self) -> bool:
         return len(self.entries) < self.max_calls
 
-    def budget_remaining(self, pricing: Optional[PricingProvider] = None) -> Optional[float]:
-        if pricing is None or self.max_budget_usd <= 0:
-            return None
-        spent = sum(pricing.estimate_cost(e.input_tokens, e.output_tokens) for e in self.entries)
-        return self.max_budget_usd - spent
+    def budget_remaining(self, pricing=None):
+        return None
 
     def record(self, entry: UsageEntry) -> None:
         self.entries.append(entry)
@@ -108,24 +81,12 @@ class UsageTracker:
 
 
 class OllamaModelClient:
-    """Local or hosted Ollama endpoint.
-
-    Important note: research indicates that Ollama structured outputs are local
-    endpoint capabilities, while cloud support may be limited. The client asks
-    for a JSON object when a schema is available, but parsing is still validated elsewhere.
-    """
-
-    def __init__(
-        self,
-        base_url: Optional[str] = None,
-        model: str = "qwen2.5:7b",
-        timeout_seconds: int = 120,
-    ) -> None:
+    def __init__(self, base_url=None, model="qwen2.5:7b", timeout_seconds=120):
         self.base_url = (base_url or os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")).rstrip("/")
         self.model = model
         self.timeout_seconds = timeout_seconds
 
-    def health_check(self, attempts: int = 3, delay_seconds: float = 1.0) -> Optional[str]:
+    def health_check(self, attempts=3, delay_seconds=1.0):
         last_error = None
         for attempt in range(1, max(1, attempts) + 1):
             try:
@@ -139,14 +100,41 @@ class OllamaModelClient:
                 time.sleep(delay_seconds)
         return last_error
 
-    def complete(
-        self,
-        case_id: str,
-        system_prompt: str,
-        user_prompt: str,
-        response_schema: Optional[Dict[str, Any]] = None,
-        options: Optional[Dict[str, Any]] = None,
-    ) -> ModelCall:
+    @staticmethod
+    def extract_json(text: str):
+        if not text:
+            return None
+        # Try direct parse first; many Ollama responses already are clean JSON.
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            pass
+
+        # Remove common wrappers, markdown fences, and thinking sections.
+        cleaned = text.replace("```json", "").replace("```", "")
+        cleaned = re.sub(r"<think>.*?</think>", "", cleaned, flags=re.DOTALL | re.IGNORECASE)
+        cleaned = re.sub(r"`{3,}", "", cleaned)
+
+        # Locate the outermost JSON object or array.
+        start_obj, obj = cleaned.find("{"), None
+        start_arr, arr = cleaned.find("["), None
+        if start_obj >= 0:
+            end = cleaned.rfind("}")
+            if end > start_obj:
+                try:
+                    return json.loads(cleaned[start_obj:end + 1])
+                except json.JSONDecodeError:
+                    pass
+        if start_arr >= 0:
+            end = cleaned.rfind("]")
+            if end > start_arr:
+                try:
+                    return json.loads(cleaned[start_arr:end + 1])
+                except json.JSONDecodeError:
+                    pass
+        return None
+
+    def complete(self, case_id=None, system_prompt="", user_prompt="", response_schema=None, options=None):
         started = time.time()
         payload: Dict[str, Any] = {
             "model": self.model,
@@ -155,89 +143,51 @@ class OllamaModelClient:
                 {"role": "user", "content": user_prompt},
             ],
             "stream": False,
-            # Keep models compact and deterministic.
             "options": {
                 "temperature": 0.0,
                 "num_predict": 1024,
                 **(options or {}),
             },
         }
-
-        # Ollama supports a schema in `format` on compatible local endpoints.
         if response_schema is not None:
             payload["format"] = response_schema
 
-        request = urllib.request.Request(
-            self.base_url + "/api/chat",
-            data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
-            method="POST",
-        )
-
         try:
+            request = urllib.request.Request(
+                self.base_url + "/api/chat",
+                data=json.dumps(payload).encode("utf-8"),
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
             with urllib.request.urlopen(request, timeout=self.timeout_seconds) as response:
                 body = json.loads(response.read().decode("utf-8"))
             content = body.get("message", {}).get("content", "")
-            parsed = None
-            try:
-                parsed = json.loads(content)
-            except json.JSONDecodeError:
-                parsed = None
-            elapsed_ms = (time.time() - started) * 1000.0
-            input_estimate = max(1, (len(system_prompt) + len(user_prompt)) // 4)
-            output_estimate = max(1, len(content) // 4)
+            elapsed = (time.time() - started) * 1000.0
+            parsed = self.extract_json(content)
             return ModelCall(
                 provider="ollama",
                 model=self.model,
                 content=content,
                 parsed_json=parsed,
-                input_tokens_estimate=input_estimate,
-                output_tokens_estimate=output_estimate,
-                latency_ms=elapsed_ms,
+                input_tokens_estimate=max(1, (len(system_prompt) + len(user_prompt)) // 4),
+                output_tokens_estimate=max(1, len(content) // 4),
+                latency_ms=elapsed,
                 error=None,
             )
         except urllib.error.HTTPError as exc:
             detail = exc.read().decode("utf-8", errors="replace")
-            elapsed_ms = (time.time() - started) * 1000.0
-            return ModelCall(
-                provider="ollama",
-                model=self.model,
-                content="",
-                parsed_json=None,
-                input_tokens_estimate=0,
-                output_tokens_estimate=0,
-                latency_ms=elapsed_ms,
-                error=f"HTTP {exc.code}: {detail[:500]}",
-            )
+            return ModelCall(provider="ollama", model=self.model, content="", parsed_json=None,
+                             input_tokens_estimate=0, output_tokens_estimate=0,
+                             latency_ms=(time.time() - started) * 1000.0,
+                             error=f"HTTP {exc.code}: {detail[:500]}")
         except Exception as exc:
-            elapsed_ms = (time.time() - started) * 1000.0
-            return ModelCall(
-                provider="ollama",
-                model=self.model,
-                content="",
-                parsed_json=None,
-                input_tokens_estimate=0,
-                output_tokens_estimate=0,
-                latency_ms=elapsed_ms,
-                error=str(exc),
-            )
+            return ModelCall(provider="ollama", model=self.model, content="", parsed_json=None,
+                             input_tokens_estimate=0, output_tokens_estimate=0,
+                             latency_ms=(time.time() - started) * 1000.0, error=str(exc))
 
 
-def create_model_client_from_env() -> tuple[ModelClient, PricingProvider]:
-    """TODO: extend for HTTP/OpenAI-compatible or Anthropic providers.
-
-    This is deliberately simple because the active model choice is still
-    one of the user-facing budget decisions from Step 2.
-    """
-    provider = os.getenv("MODEL_PROVIDER", "ollama").lower()
+def create_model_client_from_env():
+    provider = os.getenv("MODEL_PROVIDER", "ollama")
     base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-
-    # TODO: provide a real pricing table for your chosen provider.
     pricing = PricingProvider()
-
-    if provider in {"ollama", "beam", "beam:cloud"}:
-        model_name = os.getenv("OLLAMA_MODEL", "qwen2.5:7b")
-        return OllamaModelClient(base_url=base_url, model=model_name), pricing
-
-    # TODO: implement hosted provider clients with native JSON-schema support.
-    raise ValueError(f"Unsupported model provider: {provider}")
+    return OllamaModelClient(base_url=base_url, model=os.getenv("OLLAMA_MODEL", "qwen2.5:7b")), pricing

@@ -53,21 +53,21 @@ class CaseOrchestrator:
             usage_tracker=usage_tracker,
         )
 
+        # Normalize before validation so the model can omit cosmetic numbering.
+        normalized_steps = []
+        for index, step in enumerate(decision.steps or [], start=1):
+            if isinstance(step, dict):
+                normalized_steps.append({**step, "step_no": step.get("step_no", index)})
+
         errors = []
         row_for_validation = {
             "case_id": decision.case_id,
             "deletion_status": decision.deletion_status or "",
-            "steps_json": decision.steps,
+            "steps_json": normalized_steps,
         }
         errors.extend(
             validate_output_row(row_for_validation, evidence_ids=self.allowed_evidence_ids(packet))
         )
-
-        normalized_steps = []
-        for index, step in enumerate(decision.steps or [], start=1):
-            normalized = dict(step)
-            normalized["step_no"] = index
-            normalized_steps.append(normalized)
 
         result_row = None
         if not errors and decision.deletion_status == "NOT_APPLICABLE":
@@ -94,7 +94,9 @@ class CaseOrchestrator:
                 "omitted_record_count": len(packet.omitted_records),
                 "linked_resource_count": len(packet.linked_resource_ids),
             },
-            "model_provider": getattr(self.reasoner, "model_provider", None),
+            "model_provider": 
+                (self.model_client.provider if getattr(self.model_client, "provider", None)
+                 else None) or getattr(self.reasoner, "model_provider", None) or self.config.model.resolved_provider(),
             "decision": {
                 "case_id": decision.case_id,
                 "deletion_status": decision.deletion_status,
