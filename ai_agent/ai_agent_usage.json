@@ -1,0 +1,16 @@
+{
+  "run_id": "13724b0e4a84420292eee6550aff3be3",
+  "model_provider": "ollama",
+  "model_name": "hf.co/Jackrong/Qwen3.5-4B-Claude-4.6-Opus-Reasoning-Distilled-GGUF:Q5_K_M",
+  "entries": [],
+  "summary": {
+    "calls": 0,
+    "successful_calls": 0,
+    "failed_calls": 0,
+    "input_tokens_estimate": 0,
+    "output_tokens_estimate": 0,
+    "total_tokens_estimate": 0,
+    "latency_ms": 0
+  },
+  "estimated_cost_usd": 0.0
+}
