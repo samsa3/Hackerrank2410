@@ -190,6 +190,85 @@ class CasePacketBuilder:
     def build_packets(self, rows: List[Dict[str, str]]) -> List[CasePacket]:
         return [self.build_packet(row) for row in rows]
 
+    def deterministic_status(self, packet: CasePacket, index: DeterministicEvidenceIndex) -> str:
+        if not packet.authorized_deletion:
+            return "NOT_APPLICABLE"
+
+        # Deterministic deletion status comes from evidence states, not model prose.
+        linked_records = [
+            (resource_id, self._best_record_for(index, resource_id, packet.records, packet.linked_resource_ids))
+            for resource_id in packet.linked_resource_ids
+        ]
+        findings = False
+        # If a mapped resource has no evidence at or before audit time, the case is
+        # conservatively INCOMPLETE rather than assuming deletion succeeded.
+        for resource_id, record in linked_records:
+            if record is None:
+                findings = True
+                break
+            noncompliant = self.is_record_noncompliant(resource_id, record)
+            if noncompliant:
+                findings = True
+                break
+        return "INCOMPLETE" if findings else "COMPLETE"
+
+    @staticmethod
+    def _best_record_for(index, resource_id, records, linked_ids):
+        for record in records:
+            if record.resource_id == resource_id:
+                return record
+        return None
+
+    @staticmethod
+    def packed_category(record: Optional[EvidenceRecord]) -> Optional[str]:
+        return record.data_category if record is not None else None
+
+    def is_record_noncompliant(self, resource_id: str, record: EvidenceRecord) -> bool:
+        try:
+            fields = record.fields or {}
+            status_text = " ".join(str(v) for v in fields.values()).lower()
+            direct = any(key in fields and fields[key] not in (None, "", "null", "none") for key in fields if key.lower() not in {"customer_reference", "user_id", "subject_reference"})
+
+            category = record.data_category
+            if category in ("SECURITY_AUDIT_LOG", "LEGAL_HOLD_RECORD"):
+                return False
+
+            if category == "BACKUP_ARCHIVE":
+                try:
+                    allowed = False
+                    for key, value in fields.items():
+                        if "restore_allowed" in key.lower():
+                            allowed = str(value).lower() in {"1", "true", "yes"}
+                    return allowed or "active" in status_text or "found" in status_text
+                except Exception:
+                    return False
+
+            if category == "ACCOUNT_TOMBSTONE":
+                return direct
+
+            if category in ("ANALYTICS_PROFILE", "PRODUCT_TELEMETRY"):
+                return direct
+
+            if category == "EMAIL_DELIVERY_LOG":
+                return direct
+
+            if category == "SUPPORT_MESSAGE":
+                return direct
+
+            if category in ("BACKUP_ARCHIVE", "DATA_FLOW"):
+                if "flow" in category or "backup" in status_text:
+                    return "active" in status_text or "enabled" in status_text
+                if "restore" in status_text or "backup" in status_text:
+                    return "allowed" in status_text or "active" in status_text
+
+            # Default: existing records without a deletion-compatible explicit null state.
+            if isinstance(fields, dict):
+                if any(value in ("null", "none", "", None, False) for value in fields.values()) and not direct:
+                    return False
+            return "present" in status_text or "found" in status_text or "active" in status_text or direct
+        except Exception:
+            return False
+
     def summary(self, packets: List[CasePacket]) -> Dict[str, Any]:
         authorized = sum(1 for p in packets if p.authorized_deletion)
         omitted = sum(len(p.omitted_records) for p in packets)
