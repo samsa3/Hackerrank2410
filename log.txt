@@ -26,3 +26,22 @@ tool=hermes-agent
 model=beam:cloud
 branch=agent-work
 repo_root=/root/Hackerrank_challenge
+## [2026-10-24T17:10:00Z] Moved runnable solution to code/main.py
+
+User Prompt (verbatim, secrets redacted):
+AGENTS.md requires starting entry point at code/main.py after-the-fact; ensure solution path matches repo contract.
+
+Agent Response Summary:
+Preserved deterministic solution as code/deterministic_main.py, replaced code/main.py with an AI-first entry point that falls back to the deterministic baseline when no model exists. Regenerated root output.csv and validated 518 rows.
+
+Actions:
+* Created code/deterministic_main.py
+* Updated code/main.py
+* Validated output.csv row count and numbering
+* Appended session log
+
+Context:
+tool=hermes-agent
+model=beam:cloud
+branch=agent-work
+repo_root=/root/Hackerrank_challenge
