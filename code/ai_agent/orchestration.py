@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from code.ai_agent.validators import validate_output_row
+from .validators import validate_output_row
 
 
 class CaseOrchestrator:
@@ -18,10 +18,10 @@ class CaseOrchestrator:
     def __init__(self, config, reasoner, model_client=None) -> None:
         self.config = config
         self.index = None
-        from code.ai_agent.indexes import DeterministicEvidenceIndex
+        from .indexes import DeterministicEvidenceIndex
         self.index = DeterministicEvidenceIndex(config.project_root)
         self.index.load()
-        from code.ai_agent.packets import CasePacketBuilder
+        from .packets import CasePacketBuilder
         self.packet_builder = CasePacketBuilder(self.index)
         self.reasoner = reasoner
         self.model_client = model_client
@@ -46,18 +46,33 @@ class CaseOrchestrator:
         started = datetime.now(timezone.utc)
         packet = self.packet_builder.build_packet(row)
 
-        decision = self.reasoner.reason(
-            packet=packet,
-            allowed_evidence_ids=self.allowed_evidence_ids(packet),
-            client=self.model_client,
-            usage_tracker=usage_tracker,
-        )
+        from ai_agent.schema import AuditDecision
 
-        # Normalize before validation so the model can omit cosmetic numbering.
+        if not getattr(packet, "authorized_deletion", True):
+            decision = AuditDecision(
+                case_id=packet.case_id,
+                deletion_status="NOT_APPLICABLE",
+                steps=[],
+                confidence=1.0,
+                missing_evidence=[],
+                reasoning_summary="deterministic request authorization override",
+            )
+        else:
+            decision = self.reasoner.reason(
+                packet=packet,
+                allowed_evidence_ids=self.allowed_evidence_ids(packet),
+                client=self.model_client,
+                usage_tracker=usage_tracker,
+            )
+
         normalized_steps = []
         for index, step in enumerate(decision.steps or [], start=1):
-            if isinstance(step, dict):
-                normalized_steps.append({**step, "step_no": step.get("step_no", index)})
+            if not isinstance(step, dict):
+                continue
+            normalized = {key: value for key, value in step.items()}
+            normalized["step_no"] = normalized.get("step_no", index)
+            normalized_steps.append(normalized)
+        decision.steps = normalized_steps
 
         errors = []
         row_for_validation = {

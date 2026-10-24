@@ -3,8 +3,8 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from code.ai_agent.config import default_config
-from code.ai_agent.pipeline import build_pipeline
+from .config import default_config
+from .pipeline import build_pipeline
 
 
 def main() -> int:
