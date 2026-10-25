@@ -456,3 +456,23 @@ branch=agent-work
 repo_root=/root/Hackerrank_challenge
 worktree=main
 parent_agent=none
+
+## [2026-10-25T05:10:00Z] Fixed self-contradictory AI status candidates
+
+User Prompt (verbatim, secrets redacted):
+"see for yourself"
+
+Agent Response Summary:
+Added a required semantic consistency gate for AI candidate statuses. High-confidence candidates are rejected when their parsed status contradicts their own reasoning text (for example, COMPLETE status accompanied by incomplete-resolution reasoning). Such candidates now fall back to deterministic status even when confidence is high.
+
+Actions:
+* Patched Pipeline status decision gate
+* Pushed to agent-work
+
+Context:
+tool=hermes-agent
+model=beam:cloud
+branch=agent-work
+repo_root=/root/Hackerrank_challenge
+worktree=main
+parent_agent=none
