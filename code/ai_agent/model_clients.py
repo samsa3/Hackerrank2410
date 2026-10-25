@@ -147,7 +147,7 @@ class OllamaModelClient:
             "think": self.think,
             "options": {
                 "temperature": 0.0,
-                "num_predict": 1024,
+                "num_predict": min(self.max_output_tokens, 4096),
                 **(options or {}),
             },
         }
