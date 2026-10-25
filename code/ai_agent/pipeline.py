@@ -157,15 +157,16 @@ class AIAuditPipeline:
                 packet = packet_builder.build_packet(row)
                 authorized = packet.authorized_deletion
             except Exception:
-                authorized = _deterministic_result(row, "authorized", True) if False else True
+                authorized = True
+                packet = None
 
             errors: List[str] = []
             try:
                 minimum_model_confidence = float(os.getenv("AI_MIN_CONFIDENCE", "0.65"))
             except ValueError:
                 minimum_model_confidence = 0.65
-            candidate_confidence = 0.0
             model_errors = list(trace.get("validation_errors") or []) if trace else []
+            candidate_confidence = 0.0
             try:
                 candidate_confidence = float(decision.get("confidence", 0.0))
             except (TypeError, ValueError):
@@ -237,6 +238,14 @@ class AIAuditPipeline:
             }
             final_rows.append(result_row)
 
+            missing_resolutions = []
+            if packet is not None and hasattr(packet, "linked_resource_ids"):
+                missing_resolutions = CasePacketBuilder.classify_missing_evidence(
+                    packet,
+                    list(decision.get("missing_evidence") or []),
+                )
+            decision.setdefault("missing_evidence_resolution", missing_resolutions)
+
             trace.setdefault("decision", {})
             trace["decision"]["deletion_status"] = final_status
             trace["decision"]["steps"] = final_steps
@@ -250,6 +259,14 @@ class AIAuditPipeline:
             trace["decision"]["override_reason"] = override_reason
             trace["decision"]["candidate_confidence"] = candidate_confidence
             trace["decision"]["candidate_validity"] = "valid" if candidate_status in {"COMPLETE","INCOMPLETE","NOT_APPLICABLE"} and not model_errors else "invalid"
+            trace["decision"]["missing_evidence_resolution"] = missing_resolutions
+            trace["execution_context"] = {
+                "minimum_confidence": minimum_model_confidence,
+                "candidate_confidence": candidate_confidence,
+                "baseline_status": baseline_status,
+                "candidate_status": candidate_status,
+                "authorized": authorized,
+            }
 
             trace["validation_errors"] = list(dict.fromkeys(model_errors + row_errors))
             if trace_write:
