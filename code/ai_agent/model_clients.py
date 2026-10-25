@@ -81,10 +81,11 @@ class UsageTracker:
 
 
 class OllamaModelClient:
-    def __init__(self, base_url=None, model="qwen2.5:7b", timeout_seconds=120):
+    def __init__(self, base_url=None, model="qwen3.5:9b-q4_K_M", timeout_seconds=120):
         self.base_url = (base_url or os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")).rstrip("/")
         self.model = model
         self.timeout_seconds = timeout_seconds
+        self.think = os.getenv("OLLAMA_THINK", "false").strip().lower() in {"1", "true", "yes"}
 
     def health_check(self, attempts=3, delay_seconds=1.0):
         last_error = None
@@ -143,7 +144,7 @@ class OllamaModelClient:
                 {"role": "user", "content": user_prompt},
             ],
             "stream": False,
-            "think": False,
+            "think": self.think,
             "options": {
                 "temperature": 0.0,
                 "num_predict": min(self.max_output_tokens, 4096),
@@ -191,4 +192,4 @@ def create_model_client_from_env():
     provider = os.getenv("MODEL_PROVIDER", "ollama")
     base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
     pricing = PricingProvider()
-    return OllamaModelClient(base_url=base_url, model=os.getenv("OLLAMA_MODEL", "qwen2.5:7b")), pricing
+    return OllamaModelClient(base_url=base_url, model=os.getenv("OLLAMA_MODEL", "qwen3.5:9b-q4_K_M"), timeout_seconds=int(os.getenv("OLLAMA_TIMEOUT_SECONDS", "180"))), pricing

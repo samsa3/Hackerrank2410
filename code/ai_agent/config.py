@@ -56,7 +56,7 @@ class ModelSettings:
     base_url: str = None
     api_key_env: str = None
     temperature: float = 0.0
-    max_output_tokens: int = 1024
+    max_output_tokens: int = 4096
     max_retries: int = 1
     timeout_seconds: int = 120
     max_calls: int = 1000
@@ -66,7 +66,7 @@ class ModelSettings:
         return (self.provider or os.getenv("MODEL_PROVIDER") or "ollama").lower()
 
     def resolved_model(self) -> str:
-        return (self.model or os.getenv("OLLAMA_MODEL") or "qwen2.5:7b")
+        return (self.model or os.getenv("OLLAMA_MODEL") or "qwen3.5:9b-q4_K_M")
 
     def resolved_base_url(self) -> str:
         return (self.base_url or os.getenv("OLLAMA_BASE_URL") or "http://localhost:11434").rstrip("/")
@@ -111,7 +111,8 @@ class AgentConfig:
         max_output = os.getenv("MAX_OUTPUT_TOKENS")
         if max_output is not None:
             try:
-                self.model.max_output_tokens = int(max_output)
+                parsed = int(max_output)
+                self.model.max_output_tokens = min(parsed, 4096)
             except ValueError:
                 pass
 

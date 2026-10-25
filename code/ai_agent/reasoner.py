@@ -32,7 +32,7 @@ class Reasoner:
 class SchemaConstrainedModelReasoner(Reasoner):
     def __init__(self, max_repair_calls: int = 1, max_output_tokens: int = 1024) -> None:
         self.max_repair_calls = max(1, max_repair_calls)
-        self.max_output_tokens = max(256, min(max_output_tokens, 1024))
+        self.max_output_tokens = max(256, min(max_output_tokens, 4096))
 
     def reason(self, packet, allowed_evidence_ids, client=None, usage_tracker=None):
         if client is None:
