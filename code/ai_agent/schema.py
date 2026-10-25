@@ -55,7 +55,14 @@ Rules:
 
 Examples:
 A COMPLETE packet necessarily has no policy-violating record or active risk at or before audit_at.
-An INCOMPLETE packet contains at least one unresolved record, active data flow, expose PII, or restore risk.
+An INCOMPLETE packet contains at least one unresolved record, active data flow, exposed PII, or restore risk.
+A NOT_APPLICABLE packet means the person did not reasonably request deletion of their own data.
+
+Tombstone guidance:
+- A tombstone may retain the stable user_id while direct identifiers (name, email, phone, email hash) are absent.
+- If the tombstone still contains any direct identifier, mark INCOMPLETE or REPORT_EXPOSED_PII as appropriate.
+- NEVER invent resource IDs, evidence IDs, step objects, phases, operations, or states.
+- Missing evidence must name either a concrete evidence identifier (e.g. evidence_01) or an exact gap.
 
 Output JSON only.
 """

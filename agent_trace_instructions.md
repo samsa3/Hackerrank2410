@@ -97,18 +97,6 @@ opencode session export <session-id> --sanitize > <session-id>.json
 
 Place the exported files in `agent-trace/opencode/`. If the CLI is unavailable and you need to provide the raw database instead, quit OpenCode first, copy only `opencode.db` into the staging folder, and inspect the copy for unrelated/private data. Never include `auth.json`, which can contain provider credentials. The default OpenCode data folder also contains logs and snapshots; those are not substitutes for the session exports.
 
-## Other Harnesses
-
-If you used an agent harness or coding tool that is not listed above (for example, Aider, Goose, RooCode, Cline, Devin, Factory, or JetBrains Junie):
-
-1. **Finish and quit the session** so all logs and session files are completely written to disk.
-2. **Create a tool subfolder** inside `agent-trace/` named after the harness (for example, `agent-trace/cursor/`, `agent-trace/windsurf/`, `agent-trace/copilot/`, `agent-trace/aider/`, or `agent-trace/goose/`).
-3. **Export and copy the session traces for this challenge:**
-   - Use the tool’s built-in session, chat, or trajectory export feature (UI or CLI) to save a readable or structured export into `agent-trace/<harness-name>/`.
-   - Copy the raw structured trace files for this challenge from the tool’s local storage directory (such as `.jsonl`, `.json`, `.db`, or chat history files) into `agent-trace/<harness-name>/`, preserving original file formats and any subagent folders. Include only the sessions from this challenge.
-4. **Redact secrets and exclude credentials:** Remove or redact any API keys, tokens, passwords, cookies, private keys, or personal data. Do **not** include authentication files, settings, or credential stores (such as `auth.json`, `config.json`, `mcp.json`, `mcp_config.json`, or `.env`).
-5. **Package and upload:** Follow the steps below to create `agent-trace.zip` and upload it with your challenge submission.
-
 ## Create the ZIP
 
 ### macOS or Linux

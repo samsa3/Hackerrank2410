@@ -27,6 +27,54 @@ def _limit_from_env() -> int | None:
     return number if number > 0 else None
 
 
+def _run_sample_check(config) -> int:
+    import csv
+    import json
+
+    sample_path = config.project_root / "dataset" / "sample_deletion_requests.csv"
+    expected_path = config.project_root / "dataset" / "sample_output.csv"
+    expected_by_case = {}
+    with expected_path.open(newline="", encoding="utf-8") as handle:
+        for row in csv.DictReader(handle):
+            expected_by_case[row["case_id"]] = row
+
+    from code.ai_agent.pipeline import build_pipeline
+
+    pipeline = build_pipeline(config)
+    from code.ai_agent.model_clients import UsageTracker
+
+    usage_tracker = UsageTracker()
+    run_id = __import__("uuid").uuid4().hex
+    with sample_path.open(newline="", encoding="utf-8") as handle:
+        rows = list(csv.DictReader(handle))
+
+    mismatches = []
+    for row in rows:
+        _trace, result = pipeline.orchestrator.run_case(row, run_id=run_id, usage_tracker=usage_tracker)
+        expected = expected_by_case.get(row["case_id"])
+        if not expected:
+            continue
+        try:
+            actual_steps = json.loads(result.get("steps_json", "[]")) if isinstance(result, dict) else []
+        except (json.JSONDecodeError, TypeError):
+            actual_steps = None
+        try:
+            expected_steps = json.loads(expected.get("steps_json", "[]"))
+        except json.JSONDecodeError:
+            expected_steps = None
+        if result.get("deletion_status") != expected.get("deletion_status"):
+            mismatches.append(
+                f"{row['case_id']}: status {result.get('deletion_status')} vs {expected.get('deletion_status')}"
+            )
+        if actual_steps != expected_steps:
+            mismatches.append(f"{row['case_id']}: step_json differs from sample")
+
+    print(f"[sample-check] rows={len(rows)} expected_cases={len(expected_by_case)} mismatches={len(mismatches)}")
+    for item in mismatches[:20]:
+        print("[sample-check mismatch]", item)
+    return 0 if not mismatches else 1
+
+
 def main() -> int:
     try:
         from code.ai_agent.config import default_config
@@ -39,6 +87,8 @@ def main() -> int:
         from code.ai_agent.proofs import promote_output_atomically
 
         config = default_config()
+        if os.getenv("MAIN_SAMPLE_CHECK", "0").lower() in {"1", "true", "yes", "on"}:
+            return _run_sample_check(config)
         client, _pricing = create_model_client_from_env()
         component_id = config.model.resolved_provider()
         base_url = config.model.resolved_base_url()
