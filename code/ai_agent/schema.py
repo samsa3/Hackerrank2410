@@ -1,13 +1,14 @@
-"""Prompt and schema construction for the hybrid audit agent.
+"""Prompt and schema construction for the governed AI audit agent.
 
-The model now makes a strictly bounded decision:
-- authorized status context from deterministic code
-- status decision
-- relevant resources / missing evidence
-- confidence and note
+The AI stage returns only bounded audit results:
+- deletion status
+- relevant resource IDs
+- missing evidence
+- confidence
+- reasoning summary
 
-Deterministic code, not the model, constructs final steps. This avoids allowing
-the model to generate invalid operation/state pairs or invent step formats.
+All final steps are constructed by deterministic code, so the model can never
+produce an invalid operation, state, phase, or step serialization.
 """
 
 from __future__ import annotations
@@ -22,20 +23,14 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-CASE_SCHEMA = {
+AUDIT_DECISION_SCHEMA = {
     "type": "object",
     "additionalProperties": False,
-    "required": ["case_id", "deletion_status"],
+    "required": ["case_id", "deletion_status", "relevant_resources", "missing_evidence", "confidence", "reasoning_summary"],
     "properties": {
         "case_id": {"type": "string", "minLength": 1},
-        "deletion_status": {
-            "type": "string",
-            "enum": ["COMPLETE", "INCOMPLETE", "NOT_APPLICABLE"],
-        },
-        "relevant_resources": {
-            "type": "array",
-            "items": {"type": "string", "minLength": 1},
-        },
+        "deletion_status": {"type": "string", "enum": ["COMPLETE", "INCOMPLETE", "NOT_APPLICABLE"]},
+        "relevant_resources": {"type": "array", "items": {"type": "string", "minLength": 1}},
         "missing_evidence": {"type": "array", "items": {"type": "string"}},
         "confidence": {"type": "number", "minimum": 0.0, "maximum": 1.0},
         "reasoning_summary": {"type": "string"},
@@ -44,36 +39,26 @@ CASE_SCHEMA = {
 
 SYSTEM_PROMPT = """You are an AI deletion-audit analyst.
 
-Return one JSON object only. Use compact keys and no explanation outside JSON.
+Return exactly one JSON object. No markdown, no commentary, no extra keys.
 
-The caller has already supplied packet facts, linked resource IDs, and authorized_deletion. Treat authorized_deletion as authoritative.
-
-Reliable statuses:
-- COMPLETE: all relevant records received required treatment and no reason for concern at or before audit_at.
-- INCOMPLETE: a relevant record, flow, or restore path remains in a prohibited state.
-- NOT_APPLICABLE: non-deletion request (authorization decision supplied).
+The deterministic backend has already resolved identity and candidate evidence.
+Treat authorized_deletion as authoritative. NOT_APPLICABLE usually cannot be
+derived unless the request does not request deletion.
 
 Rules:
-- Do not re-invent resource IDs. Reuse only IDs from the packet.
-- If no before-audit evidence is available for a linked resource, it is not automatically COMPLETE.
-- Do not mark COMPLETE if any relevant safe resource is omitted from evidence.
-- For authorization text, let the caller's authorized_deletion decide NOT_APPLICABLE.
-- Use concise confidence between 0 and 1.
+- Reuse only resource IDs from linked_resource_ids.
+- If no before-audit evidence is available for a linked resource, treat it as potentially relevant and not automatically COMPLETE.
+- If any relevant record still exists or a prohibited flow remains active, choose INCOMPLETE.
+- Consider retained records as allowed when their required treatment is satisfied.
+- Missing evidence must be listed as concrete IDs or exact gaps.
+- Do not invent step objects, operations, states, or citation IDs.
+
+Examples:
+A COMPLETE packet necessarily has no policy-violating record or active risk at or before audit_at.
+An INCOMPLETE packet contains at least one unresolved record, active data flow, expose PII, or restore risk.
+
+Output JSON only.
 """
-
-AUDIT_DECISION_SCHEMA = CASE_SCHEMA
-
-
-@dataclass
-class StepInput:
-    phase: str
-    system_id: str
-    resource_id: str
-    operation: str
-    state: str
-    evidence_id: str
-    step_no: int = 0
-
 
 @dataclass
 class AuditDecision:
@@ -87,48 +72,41 @@ class AuditDecision:
 
 
 def render_packet_summary(packet: Any) -> str:
-    lines = [
-        f"case_id: {packet.case_id}",
-        f"subject_email: {packet.email}",
-        f"stable_user_id: {packet.user_id}",
-        f"authorized_deletion: {packet.authorized_deletion}",
-        f"requested_at: {packet.requested_at}",
-        f"audit_at: {packet.audit_at}",
-        f"identity_notes: {packet.identity_notes}",
-        f"linked_resource_ids: {packet.linked_resource_ids}",
-        "",
-        "records:",
-    ]
+    compact = []
+    compact.append(f"case_id={packet.case_id}")
+    compact.append(f"email={packet.email}")
+    compact.append(f"user_id={packet.user_id}")
+    compact.append(f"authorized={packet.authorized_deletion}")
+    compact.append(f"requested_at={packet.requested_at}")
+    compact.append(f"audit_at={packet.audit_at}")
+    compact.append(f"linked_resources={packet.linked_resource_ids}")
+    compact.append(f"identity_notes={packet.identity_notes}")
 
-    for record in getattr(packet, "records", []):
-        lines.append(
-            f"- system={record.system_id}; resource={record.resource_id}; "
-            f"category={record.data_category}; source={record.source_file_id}; "
-            f"observed_at={record.observed_at}; fields={record.fields}"
-        )
+    packet_records = getattr(packet, "records", [])
+    if packet_records:
+        compact.append("records=")
+        for record in packet_records:
+            compact.append(
+                f"  system={record.system_id}, resource={record.resource_id}, "
+                f"category={record.data_category}, source={record.source_file_id}, "
+                f"observed_at={record.observed_at}, fields={record.fields}"
+            )
+    else:
+        compact.append("records=none before audit_at")
 
-    omitted = getattr(packet, "omitted_records", [])
-    if omitted:
-        lines.append("")
-        lines.append("omitted_evidence:")
-        for item in omitted:
-            lines.append(f"- {item}")
-
-    return "\n".join(lines)
+    return "\n".join(compact)
 
 
-def build_user_prompt(packet: Any, allowed_evidence_ids: Optional[set[str]] = None) -> str:
+def build_user_prompt(packet: Any, allowed_evidence_ids: Optional[Set[str]] = None) -> str:
     allowed = allowed_evidence_ids or set()
-    return f"""
-Apply the Ghost Data Still Exists deletion contract to the case packet.
+    return f"""Apply the Ghost Data Still Exists deletion contract to the compact case packet.
 
-Packet:
 {render_packet_summary(packet)}
 
-Allowed evidence IDs:
-{sorted(allowed)}
+allowed_evidence_ids={sorted(allowed)}
 
-Return JSON with only status, relevant resources, missing evidence, confidence, and a concise summary.
+Return only JSON:
+case_id, deletion_status, relevant_resources, missing_evidence, confidence, reasoning_summary
 """
 
 
@@ -136,10 +114,9 @@ def schema_text(schema: dict) -> str:
     return json.dumps(schema, sort_keys=True, indent=2)
 
 
-# Optional commented Pydantic sketch intentionally retained because Pydantic may be
-# added later without changing runtime interfaces.
+# Optional commented Pydantic sketch. Disabled because Pydantic is not installed.
 #
-# class CaseDecisionModel(BaseModel):
+# class AuditDecisionModel(BaseModel):
 #     case_id: str
 #     deletion_status: Literal["COMPLETE", "INCOMPLETE", "NOT_APPLICABLE"]
 #     relevant_resources: list[str] = []

@@ -1,8 +1,13 @@
-"""AI reasoning boundary for the governed audit agent.
+"""Controlled AI-stage for the deletion-audit agent.
 
-The model returns only a compact case decision. Deterministic code constructs
- all contract-compliant steps, so the model cannot accidentally emit invalid
- operations, states, or JSON shapes.
+The model returns only:
+- deletion status
+- relevant resource IDs
+- missing evidence
+- confidence
+- reasoning summary
+
+All final row steps are built deterministically from packet and baseline data.
 """
 
 from __future__ import annotations
@@ -16,10 +21,7 @@ if str(PROJECT_ROOT) not in __import__("sys").path:
 
 from .model_clients import ModelClient, UsageTracker
 from .packets import CasePacket
-from .schema import AUDIT_DECISION_SCHEMA, SYSTEM_PROMPT, build_user_prompt, StepInput, AuditDecision
-from .validators import validate_output_row
-
-ALLOWED_STATUSES = {"COMPLETE", "INCOMPLETE", "NOT_APPLICABLE"}
+from .schema import AUDIT_DECISION_SCHEMA, SYSTEM_PROMPT, build_user_prompt, AuditDecision
 
 
 class Reasoner:
@@ -28,49 +30,9 @@ class Reasoner:
 
 
 class SchemaConstrainedModelReasoner(Reasoner):
-    def __init__(self, max_repair_calls: int = 1, max_output_tokens: int = 1024):
-        self.max_repair_calls = 1
+    def __init__(self, max_repair_calls: int = 1, max_output_tokens: int = 1024) -> None:
+        self.max_repair_calls = max(1, max_repair_calls)
         self.max_output_tokens = max(256, min(max_output_tokens, 1024))
-
-    @staticmethod
-    def _coerce_decision(packet: CasePacket, decision: Any) -> AuditDecision:
-        if not isinstance(decision, dict):
-            decision = {}
-
-        status = decision.get("deletion_status")
-        status = status if status in ALLOWED_STATUSES else None
-        resources = decision.get("relevant_resources", [])
-        if not isinstance(resources, list):
-            resources = []
-
-        missing = decision.get("missing_evidence", [])
-        if not isinstance(missing, list):
-            missing = []
-
-        try:
-            confidence = float(decision.get("confidence", 0.0))
-        except (TypeError, ValueError):
-            confidence = 0.0
-        confidence = min(1.0, max(0.0, confidence))
-
-        return AuditDecision(
-            case_id=decision.get("case_id", packet.case_id),
-            deletion_status=status,
-            relevant_resources=[str(item) for item in resources],
-            missing_evidence=[str(item) for item in missing],
-            confidence=confidence,
-            reasoning_summary=str(decision.get("reasoning_summary", ""))[:500],
-            steps=[],
-        )
-
-    def _call(self, client, packet, allowed, prompt):
-        return client.complete(
-            case_id=packet.case_id,
-            system_prompt=SYSTEM_PROMPT,
-            user_prompt=prompt,
-            response_schema=AUDIT_DECISION_SCHEMA,
-            options={"num_predict": self.max_output_tokens},
-        )
 
     def reason(self, packet, allowed_evidence_ids, client=None, usage_tracker=None):
         if client is None:
@@ -78,10 +40,9 @@ class SchemaConstrainedModelReasoner(Reasoner):
                 case_id=packet.case_id,
                 deletion_status=None,
                 relevant_resources=[],
-                missing_evidence=["no model client"],
+                missing_evidence=["no model client available"],
                 confidence=0.0,
-                reasoning_summary="model stage skipped",
-                steps=[],
+                reasoning_summary="model stage unavailable",
             )
 
         if not getattr(packet, "authorized_deletion", True):
@@ -91,15 +52,19 @@ class SchemaConstrainedModelReasoner(Reasoner):
                 relevant_resources=[],
                 missing_evidence=[],
                 confidence=1.0,
-                reasoning_summary="deterministic authorization override",
-                steps=[],
+                reasoning_summary="non-deletion request classified deterministically",
             )
 
-        prompt = build_user_prompt(packet, allowed_evidence_ids)
-        call = self._call(client, packet, allowed_evidence_ids, prompt)
+        call = client.complete(
+            case_id=packet.case_id,
+            system_prompt=SYSTEM_PROMPT,
+            user_prompt=build_user_prompt(packet, allowed_evidence_ids),
+            response_schema=AUDIT_DECISION_SCHEMA,
+            options={"num_predict": self.max_output_tokens},
+        )
 
-        from .model_clients import UsageEntry
         if usage_tracker is not None:
+            from .model_clients import UsageEntry
             usage_tracker.record(
                 UsageEntry(
                     case_id=packet.case_id,
@@ -108,7 +73,7 @@ class SchemaConstrainedModelReasoner(Reasoner):
                     input_tokens=call.input_tokens_estimate,
                     output_tokens=call.output_tokens_estimate,
                     latency_ms=call.latency_ms,
-                    succeeded=call.error is None and call.parsed_json is not None,
+                    succeeded=call.error is None and isinstance(call.parsed_json, dict),
                 )
             )
 
@@ -120,21 +85,31 @@ class SchemaConstrainedModelReasoner(Reasoner):
                 missing_evidence=[call.error],
                 confidence=0.0,
                 reasoning_summary=call.error,
-                steps=[],
             )
 
-        if not isinstance(call.parsed_json, dict):
-            return AuditDecision(
-                case_id=packet.case_id,
-                deletion_status=None,
-                relevant_resources=[],
-                missing_evidence=["model response was not a JSON object"],
-                confidence=0.0,
-                reasoning_summary=str(call.content)[:250],
-                steps=[],
-            )
+        parsed = call.parsed_json if isinstance(call.parsed_json, dict) else {}
+        resources = parsed.get("relevant_resources", [])
+        if not isinstance(resources, list):
+            resources = []
+        missing = parsed.get("missing_evidence", [])
+        if not isinstance(missing, list):
+            missing = []
+        try:
+            confidence = float(parsed.get("confidence", 0.0))
+        except (TypeError, ValueError):
+            confidence = 0.0
 
-        return self._coerce_decision(packet, call.parsed_json)
+        status = parsed.get("deletion_status")
+        status = status if status in {"COMPLETE", "INCOMPLETE", "NOT_APPLICABLE"} else None
+
+        return AuditDecision(
+            case_id=parsed.get("case_id", packet.case_id),
+            deletion_status=status,
+            relevant_resources=[str(x) for x in resources],
+            missing_evidence=[str(x) for x in missing],
+            confidence=min(1.0, max(0.0, confidence)),
+            reasoning_summary=str(parsed.get("reasoning_summary", ""))[:500],
+        )
 
 
 class DeterministicFallbackReasoner(Reasoner):
@@ -146,5 +121,4 @@ class DeterministicFallbackReasoner(Reasoner):
             missing_evidence=["no reachable model endpoint"],
             confidence=0.0,
             reasoning_summary="deterministic fallback only",
-            steps=[],
         )
