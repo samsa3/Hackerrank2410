@@ -193,14 +193,18 @@ class AIAuditPipeline:
                 model_errors=model_errors,
                 minimum_confidence=minimum_model_confidence,
             )
-            # The machine gate is the actual combination point. The model may
-            # propose a candidate, but it only becomes final after deterministic
-            # packet constraints, evidence identifiers, confidence, and baseline
-            # agreement are all checked.
+            allow_disagreeing_candidate = os.getenv("AI_ALLOW_CANDIDATE_OVERRIDE", "").strip().lower() in {"1", "true", "yes", "on"}
+            # The machine gate allows an actual model-driven override only when
+            # consensus is authorized or deliberately requested. Otherwise AI
+            # remains an accountable shadow policy behind deterministic output.
             if authorized is False:
                 model_status = "NOT_APPLICABLE"
             elif not machine_gate.passed or candidate_status is None:
                 model_status = None
+            elif candidate_confidence < minimum_model_confidence:
+                model_status = None
+            elif baseline_status in {"COMPLETE", "INCOMPLETE"} and candidate_status != baseline_status and not allow_disagreeing_candidate:
+                model_status = baseline_status
             else:
                 model_status = candidate_status
 
@@ -292,7 +296,8 @@ class AIAuditPipeline:
             trace["decision"]["candidate_reason_conflict"] = candidate_reason_conflict
             trace["decision"]["candidate_machine_gate_passed"] = machine_gate.passed
             trace["decision"]["candidate_machine_gate_reasons"] = machine_gate.reasons
-            trace["decision"]["candidate_accepted"] = "valid" if machine_gate.passed and model_status == candidate_status else "invalid"
+            trace["decision"]["candidate_accepted"] = "valid" if machine_gate.passed or (allow_disagreeing_candidate and model_status == candidate_status) else "invalid"
+            trace["decision"]["disagreement_experiment_enabled"] = allow_disagreeing_candidate
             trace["execution_context"] = {
                 "minimum_confidence": minimum_model_confidence,
                 "candidate_confidence": candidate_confidence,
