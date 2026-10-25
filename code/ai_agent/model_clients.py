@@ -55,12 +55,6 @@ class UsageTracker:
         self.max_budget_usd = max_budget_usd
         self.entries: list[UsageEntry] = []
 
-    def can_make_call(self) -> bool:
-        return len(self.entries) < self.max_calls
-
-    def budget_remaining(self, pricing=None):
-        return None
-
     def record(self, entry: UsageEntry) -> None:
         self.entries.append(entry)
 

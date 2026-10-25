@@ -297,10 +297,6 @@ class CasePacketBuilder:
                 return record
         return None
 
-    @staticmethod
-    def packed_category(record: Optional[EvidenceRecord]) -> Optional[str]:
-        return record.data_category if record is not None else None
-
     def is_record_noncompliant(self, resource_id: str, record: EvidenceRecord) -> bool:
         try:
             fields = record.fields or {}

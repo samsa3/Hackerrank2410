@@ -19,16 +19,6 @@ def _env_int(name: str, default: Optional[int] = None) -> Optional[int]:
         return default
 
 
-def _env_float(name: str, default: float = 0.0) -> float:
-    value = os.getenv(name)
-    if not value:
-        return default
-    try:
-        return float(value)
-    except ValueError:
-        return default
-
-
 def load_env_file(path: Optional[Path] = None) -> None:
     """Load simple KEY=VALUE settings into os.environ."""
     if path is None:
