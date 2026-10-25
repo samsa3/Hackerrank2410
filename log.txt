@@ -456,3 +456,39 @@ branch=agent-work
 repo_root=/root/Hackerrank_challenge
 worktree=main
 parent_agent=none
+
+## [2026-10-25T05:10:00Z] Fixed self-contradictory AI status candidates
+
+User Prompt (verbatim, secrets redacted):
+"see for yourself"
+
+Agent Response Summary:
+Added a required semantic consistency gate for AI candidate statuses. High-confidence candidates are rejected when their parsed status contradicts their own reasoning text (for example, COMPLETE status accompanied by incomplete-resolution reasoning). Such candidates now fall back to deterministic status even when confidence is high.
+
+Actions:
+* Patched Pipeline status decision gate
+* Pushed to agent-work
+
+Context:
+tool=hermes-agent
+model=beam:cloud
+branch=agent-work
+repo_root=/root/Hackerrank_challenge
+worktree=main
+parent_agent=none
+
+## [2026-10-25T05:35:00Z] Automated evaluation and usage report generation
+
+User Prompt (verbatim, secrets redacted):
+"I finsihed step1 and2 ... doing step 3 just outputs evaluation report placeholder. Usage totals should be aligned against the saved run trace..."
+
+Agent Response Summary:
+Replaced the placeholder evaluation entry point with a deterministic report generator that reads output rows, trace summaries, and usage artifacts (when available). Reports now include provider/model, candidate-vs-baseline counts, validation-error count, custom cases, failure/fix notes, token/cost summaries, and trace metadata. Generated both required Markdown files.
+
+Context:
+tool=hermes-agent
+model=beam:cloud
+branch=agent-work
+repo_root=/root/Hackerrank_challenge
+worktree=main
+parent_agent=none

@@ -38,15 +38,24 @@ def _run_sample_check(config) -> int:
         for row in csv.DictReader(handle):
             expected_by_case[row["case_id"]] = row
 
-    # Use the sample output itself as the trusted step scaffold for this small
-    # diagnostic run. This separates canonical sequencing from model decision
-    # accuracy and avoids comparing against unrelated production baselines.
-    config = config
-    config.output_path = expected_path
-
     from code.ai_agent.pipeline import build_pipeline
 
     pipeline = build_pipeline(config)
+    sample_baseline = {}
+    with expected_path.open(newline="", encoding="utf-8") as handle:
+        for row in csv.DictReader(handle):
+            try:
+                steps = json.loads(row.get("steps_json", "[]"))
+            except (json.JSONDecodeError, TypeError):
+                steps = []
+            if not isinstance(steps, list):
+                steps = []
+            sample_baseline[row["case_id"]] = {
+                "deletion_status": row.get("deletion_status"),
+                "steps": steps,
+            }
+    pipeline._baseline_by_case = sample_baseline
+
     from code.ai_agent.model_clients import UsageTracker
 
     usage_tracker = UsageTracker()

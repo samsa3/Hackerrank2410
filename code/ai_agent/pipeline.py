@@ -172,8 +172,20 @@ class AIAuditPipeline:
             except (TypeError, ValueError):
                 candidate_confidence = 0.0
 
+            candidate_reason_conflict = False
+            reasoning_text = str(decision.get("reasoning_summary", "")).lower()
+            if candidate_status == "COMPLETE" and (
+                "incomplete" in reasoning_text
+                or "not complete" in reasoning_text
+                or "does not automatically complete" in reasoning_text
+                or "must be treated as potentially relevant" in reasoning_text
+            ):
+                candidate_reason_conflict = True
+
             if authorized is False:
                 model_status = "NOT_APPLICABLE"
+            elif candidate_reason_conflict:
+                model_status = None
             elif candidate_status in {"COMPLETE", "INCOMPLETE", "NOT_APPLICABLE"} and not model_errors and candidate_confidence >= minimum_model_confidence:
                 model_status = candidate_status
             else:
@@ -259,6 +271,7 @@ class AIAuditPipeline:
             trace["decision"]["override_reason"] = override_reason
             trace["decision"]["candidate_confidence"] = candidate_confidence
             trace["decision"]["candidate_validity"] = "valid" if candidate_status in {"COMPLETE","INCOMPLETE","NOT_APPLICABLE"} and not model_errors else "invalid"
+            trace["decision"]["candidate_reason_conflict"] = candidate_reason_conflict
             trace["decision"]["missing_evidence_resolution"] = missing_resolutions
             trace["execution_context"] = {
                 "minimum_confidence": minimum_model_confidence,
