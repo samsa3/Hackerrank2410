@@ -12,6 +12,7 @@ from typing import Any, Dict, List, Optional
 from .config import AgentConfig
 from .model_clients import create_model_client_from_env, UsageTracker, PricingProvider
 from .orchestration import CaseOrchestrator
+from .machine_combination import combine_candidate
 from .reasoner import (
     DeterministicFallbackReasoner,
     SchemaConstrainedModelReasoner,
@@ -182,13 +183,30 @@ class AIAuditPipeline:
             ):
                 candidate_reason_conflict = True
 
+            machine_gate = combine_candidate(
+                packet=packet,
+                candidate_status=candidate_status,
+                candidate_resources=decision.get("relevant_resources", []),
+                missing_evidence=decision.get("missing_evidence", []),
+                confidence=candidate_confidence,
+                baseline_status=baseline_status,
+                model_errors=model_errors,
+                minimum_confidence=minimum_model_confidence,
+            )
+            # The machine gate is the actual combination point. The model may
+            # propose a candidate, but it only becomes final after deterministic
+            # packet constraints, evidence identifiers, confidence, and baseline
+            # agreement are all checked.
             if authorized is False:
                 model_status = "NOT_APPLICABLE"
-            elif candidate_reason_conflict:
+            elif not machine_gate.passed or candidate_status is None:
                 model_status = None
-            elif candidate_status in {"COMPLETE", "INCOMPLETE", "NOT_APPLICABLE"} and not model_errors and candidate_confidence >= minimum_model_confidence:
-                model_status = candidate_status
             else:
+                model_status = candidate_status
+
+            if candidate_reason_conflict:
+                model_status = None
+            if model_status is None:
                 model_status = baseline_status if baseline_status in {"COMPLETE", "INCOMPLETE", "NOT_APPLICABLE"} else None
 
             # Candidate status is primary when valid. Deterministic evidence only
@@ -272,6 +290,16 @@ class AIAuditPipeline:
             trace["decision"]["candidate_confidence"] = candidate_confidence
             trace["decision"]["candidate_validity"] = "valid" if candidate_status in {"COMPLETE","INCOMPLETE","NOT_APPLICABLE"} and not model_errors else "invalid"
             trace["decision"]["candidate_reason_conflict"] = candidate_reason_conflict
+            trace["decision"]["candidate_machine_gate_passed"] = machine_gate.passed
+            trace["decision"]["candidate_machine_gate_reasons"] = machine_gate.reasons
+            trace["decision"]["candidate_accepted"] = "valid" if machine_gate.passed and model_status == candidate_status else "invalid"
+            trace["execution_context"] = {
+                "minimum_confidence": minimum_model_confidence,
+                "candidate_confidence": candidate_confidence,
+                "baseline_status": baseline_status,
+                "candidate_status": candidate_status,
+                "machine_gate": machine_gate.passed,
+            }
             trace["decision"]["missing_evidence_resolution"] = missing_resolutions
             trace["execution_context"] = {
                 "minimum_confidence": minimum_model_confidence,
