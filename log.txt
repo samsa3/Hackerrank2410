@@ -508,3 +508,35 @@ branch=agent-work
 repo_root=/root/Hackerrank_challenge
 worktree=main
 parent_agent=none
+
+## [2026-10-25T05:30:00Z] Make candidate override deliberate and machine-gated
+
+User Prompt (verbatim, secrets redacted):
+"please setup the code in that way so that next time i run it there can be the 'deliberate disagreement' you talk about . also if you remember earlier bugs you can try to fix them . just DONT run the model itself"
+
+Agent Response Summary:
+Added an explicit opt-in `AI_ALLOW_CANDIDATE_OVERRIDE` so candidate AI statuses can challenge the deterministic baseline after machine self-consistency and packet-local checks. Preview remains deterministic unless deliberately enabled, so artifact quality is preserved.
+
+Context:
+tool=hermes-agent
+model=beam:cloud
+branch=agent-work
+repo_root=/root/Hackerrank_challenge
+worktree=main
+parent_agent=none
+
+## [2026-10-25T05:45:00Z] Added opt-in deliberate disagreement gate
+
+User Prompt (verbatim, secrets redacted):
+"please setup the code in that way so that next time i run it there can be the 'deliberate disagreement' you talk about . also if you remember earlier bugs you can try to fix them . just DONT run the model itself"
+
+Agent Response Summary:
+Updated the machine combination gate so baseline disagreement is no longer automatically rejected. The new opt-in `AI_ALLOW_CANDIDATE_OVERRIDE` environment flag allows a model candidate to challenge deterministic status, but only when schema, scope, semantic self-consistency, confidence, and missing-evidence constraints all still pass. Deterministic safety remains the default.
+
+Context:
+tool=hermes-agent
+model=beam:cloud
+branch=agent-work
+repo_root=/root/Hackerrank_challenge
+worktree=main
+parent_agent=none

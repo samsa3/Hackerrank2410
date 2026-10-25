@@ -25,6 +25,7 @@ class CandidateMachineVerifier:
         baseline_status: Optional[str],
         model_errors: List[str],
         minimum_confidence: float,
+        allow_disagreement: bool = False,
     ) -> "CandidateVerification":
         reasons: List[str] = []
 
@@ -60,7 +61,7 @@ class CandidateMachineVerifier:
                 reasons.append("candidate_claims_not_applicable_for_authorized_deletion")
 
         if baseline_status in {"COMPLETE", "INCOMPLETE"} and candidate_status not in {None, "NOT_APPLICABLE"}:
-            if candidate_status != baseline_status:
+            if candidate_status != baseline_status and not allow_disagreement:
                 reasons.append("candidate_does_not_agree_with_deterministic_baseline")
 
         return CandidateVerification(passed=not reasons, reasons=reasons)
@@ -82,6 +83,7 @@ def combine_candidate(
     baseline_status: Optional[str],
     model_errors: List[str],
     minimum_confidence: float,
+    allow_disagreement: bool = False,
 ) -> CandidateVerification:
     verifier = CandidateMachineVerifier()
     return verifier.evaluate(
@@ -93,4 +95,5 @@ def combine_candidate(
         baseline_status=baseline_status,
         model_errors=model_errors,
         minimum_confidence=minimum_confidence,
+        allow_disagreement=allow_disagreement,
     )
