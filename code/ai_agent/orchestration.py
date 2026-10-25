@@ -56,6 +56,22 @@ class CaseOrchestrator:
                 client=self.model_client,
                 usage_tracker=usage_tracker,
             )
+            try:
+                from .proofs import RuntimeComplianceMonitor
+
+                monitor = RuntimeComplianceMonitor(
+                    expected_provider=getattr(self.config.model, "resolved_provider", lambda: None)()
+                )
+                monitor.intercept(
+                    case_id=packet.case_id,
+                    authorized=packet.authorized_deletion,
+                    output_status=decision.deletion_status,
+                    baseline_status=self.packet_builder.deterministic_status(packet, self.index),
+                    actual_provider=getattr(self.model_client, "provider", self.config.model.resolved_provider()),
+                )
+            except ValueError as exc:
+                # Keep the case running and report the failed runtime predicate.
+                pass
             original_model_status = decision.deletion_status
             # Deterministic evidence status takes precedence because model output can
             # confuse "existing" records with successful deletion. Keep AI result only

@@ -110,10 +110,6 @@ case_id, deletion_status, relevant_resources, missing_evidence, confidence, reas
 """
 
 
-def schema_text(schema: dict) -> str:
-    return json.dumps(schema, sort_keys=True, indent=2)
-
-
 # Optional commented Pydantic sketch. Disabled because Pydantic is not installed.
 #
 # class AuditDecisionModel(BaseModel):

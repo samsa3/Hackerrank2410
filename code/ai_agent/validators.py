@@ -88,23 +88,6 @@ def validate_step(step: Any, index: int, evidence_ids: Optional[Set[str]] = None
     return errors
 
 
-def validate_and_fix_step_order(steps: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Return steps in challenge-required order, retaining objects."""
-
-    def sort_key(step: Dict[str, Any]) -> tuple:
-        phase = step.get("phase", "ZZZ")
-        operation = step.get("operation", "ZZZ")
-        op_order = OPERATION_ORDER.get(phase, []).index(operation) if operation in OPERATION_ORDER.get(phase, []) else 999
-        return (
-            PHASE_ORDER.get(phase, 999),
-            op_order,
-            str(step.get("system_id", "")),
-            str(step.get("resource_id", "")),
-        )
-
-    return sorted(steps, key=sort_key)
-
-
 def validate_steps_json(value: Any, evidence_ids: Optional[Set[str]] = None) -> List[str]:
     errors: List[str] = []
 
@@ -190,12 +173,6 @@ def validate_output_rows(rows: List[Any], evidence_ids: Optional[Set[str]] = Non
         errors.extend(validate_output_row(row, evidence_ids, expected_case_ids))
 
     return errors
-
-
-def model_to_dict(value: Any) -> Any:
-    if is_dataclass(value):
-        return asdict(value)
-    return value
 
 
 def raise_for_validation(errors: List[str]) -> None:
