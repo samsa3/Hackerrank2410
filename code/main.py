@@ -30,9 +30,30 @@ def _limit_from_env() -> int | None:
 def main() -> int:
     try:
         from code.ai_agent.config import default_config
+        from code.ai_agent.model_clients import (
+            create_model_client_from_env,
+            OllamaModelClient,
+            UsageTracker,
+        )
         from code.ai_agent.pipeline import build_pipeline
 
         config = default_config()
+        client, _pricing = create_model_client_from_env()
+        component_id = config.model.resolved_provider()
+        base_url = config.model.resolved_base_url()
+        model_name = config.model.resolved_model()
+
+        print(f"[AI] Provider: {component_id}")
+        print(f"[AI] Model: {model_name}")
+        print(f"[AI] Endpoint: {base_url}")
+        if isinstance(client, OllamaModelClient):
+            health_error = client.health_check()
+            if health_error is not None:
+                print(f"[AI] Ollama endpoint is unreachable: {health_error}")
+                print("[AI] falling back to deterministic pipeline.")
+                raise RuntimeError(f"Ollama endpoint unreachable: {health_error}")
+        print("[AI] Endpoint health check passed.")
+
         pipeline = build_pipeline(config)
         all_rows = pipeline.load_requests(limit=None)
         expected_rows = min(_limit_from_env() or len(all_rows), len(all_rows))
@@ -67,6 +88,7 @@ def main() -> int:
                 print(f"[AI] Wrote {produced_rows} valid rows to {config.output_path}")
                 return 0
     except Exception:
+        print("[AI] falling back to deterministic baseline after AI error.")
         traceback.print_exc()
         Path(ROOT / "ai_agent_failure.txt").write_text(
             __import__("traceback").format_exc(),
