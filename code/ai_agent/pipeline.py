@@ -183,6 +183,7 @@ class AIAuditPipeline:
             ):
                 candidate_reason_conflict = True
 
+            allow_disagreeing_candidate = os.getenv("AI_ALLOW_CANDIDATE_OVERRIDE", "").strip().lower() in {"1", "true", "yes", "on"}
             machine_gate = combine_candidate(
                 packet=packet,
                 candidate_status=candidate_status,
@@ -192,7 +193,10 @@ class AIAuditPipeline:
                 baseline_status=baseline_status,
                 model_errors=model_errors,
                 minimum_confidence=minimum_model_confidence,
+                allow_disagreement=allow_disagreeing_candidate,
             )
+            # A deliberate disagreement must still be auditable. By default the
+            # model changes nothing, so deterministic output remains dominant.
             allow_disagreeing_candidate = os.getenv("AI_ALLOW_CANDIDATE_OVERRIDE", "").strip().lower() in {"1", "true", "yes", "on"}
             # The machine gate allows an actual model-driven override only when
             # consensus is authorized or deliberately requested. Otherwise AI
