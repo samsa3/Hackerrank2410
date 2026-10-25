@@ -1,19 +1,19 @@
 {
   "digest_version": "ghost-data-attestation-v1",
-  "run_id": "b9faec323f5e4cb48523a1126b874f66",
+  "run_id": "bf2a1a2d6b7440c88903c9d889d7fe64",
   "model_provider": "ollama",
   "model_name": "qwen3.5:9b-q4_K_M",
-  "requested_cases": 20,
-  "produced_cases": 20,
+  "requested_cases": 5,
+  "produced_cases": 5,
   "status_counts": {
-    "INCOMPLETE": 13,
-    "COMPLETE": 7
+    "INCOMPLETE": 3,
+    "COMPLETE": 2
   },
   "evidence_ids": 94,
-  "trace_digest": "cb426179ca9b4e1f6caa2544611873d557a2040a84ab082f7470b3bbbaa9c610",
-  "output_digest": "f876028936f44ec48076f26d7891222300a81890b5245d7af09f5622ffb76b25",
-  "usage_digest": "14ea16d141b2e978dc113feba3526fc7b8fe02be0b56beeafe87e6983cb74950",
+  "trace_digest": "3ba5635dbbc17a8f33f157b4afd3f2bb88c6560a3e7179e1e702d3808bf375cb",
+  "output_digest": "27926d6efc5f87df6096ef0330bb5c609701aad47524c0771b810af4c2e101d3",
+  "usage_digest": "6273ea79d4b4aa5916247826aa75a270fa2eb03a2907a31070a97757c2871f8e",
   "validation_errors": 0,
-  "steps_written": 90,
-  "attested_at": "2026-10-25T02:40:22.839673Z"
+  "steps_written": 21,
+  "attested_at": "2026-10-25T03:56:05.043807Z"
 }

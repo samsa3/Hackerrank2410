@@ -2,14 +2,14 @@
 
 - Output rows: 518
 - Status distribution from `output.csv`: {'INCOMPLETE': 260, 'COMPLETE': 248, 'NOT_APPLICABLE': 10}
-- Trace cases: 112
-- Trace status distribution: {'COMPLETE': 56, 'INCOMPLETE': 56}
-- Model candidate status distribution: {'COMPLETE': 51, 'INCOMPLETE': 61}
-- Deterministic baseline status distribution: {'COMPLETE': 56, 'INCOMPLETE': 56}
-- Final status source counts: {'ai+baseline': 105, 'deterministic': 7}
+- Trace cases: 5
+- Trace status distribution: {'INCOMPLETE': 3, 'COMPLETE': 2}
+- Model candidate status distribution: {'INCOMPLETE': 3, 'COMPLETE': 2}
+- Deterministic baseline status distribution: {'INCOMPLETE': 3, 'COMPLETE': 2}
+- Final status source counts: {'ai+baseline': 5}
 - Trace validation-error cases: 0
-- Reported trace step count: 428
-- Average trace latency: 5088.01 ms
+- Reported trace step count: 21
+- Average trace latency: 4843.73 ms
 
 ## Sequence And Validation
 - All emitted rows were parsed as a valid list of step objects after generation.
