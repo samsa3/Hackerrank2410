@@ -177,7 +177,7 @@ class AIAuditPipeline:
                 final_steps = baseline_steps
 
             row_errors = errors
-            if candidate_status is None and ai_status is None:
+            if candidate_status is None and not model_status:
                 # No AI result; load baseline route through trace annotation only.
                 pass
             # Check model errors, if any, preserve for diagnostics.

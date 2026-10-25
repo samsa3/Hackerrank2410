@@ -203,3 +203,23 @@ branch=agent-work
 repo_root=/root/Hackerrank_challenge
 worktree=main
 parent_agent=none
+## [2026-10-24T23:10:00Z] Main entry point made explicit and diagnostics
+
+User Prompt (verbatim, secrets redacted):
+The code still fails or appears deterministic; check and fix it.
+
+Agent Response Summary:
+Updated code/main.py so a failed AI run prints exceptions and tracebacks instead of silently falling back. It now respects MAIN_MAX_CASES or MAX_CASES and reports requested, produced, status-successful, and remaining counts.
+
+Actions:
+* Modified code/main.py diagnostics
+* Validated 1-case run
+* Committed changes
+
+Context:
+tool=hermes-agent
+model=beam:cloud
+branch=agent-work
+repo_root=/root/Hackerrank_challenge
+worktree=main
+parent_agent=none
