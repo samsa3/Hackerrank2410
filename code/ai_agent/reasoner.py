@@ -25,6 +25,22 @@ from .schema import AUDIT_DECISION_SCHEMA, SYSTEM_PROMPT, build_user_prompt, Aud
 
 
 class Reasoner:
+    def _calibrate_confidence(self, packet, status, missing, errors, raw_confidence) -> float:
+        evidence_count = len(getattr(packet, "records", []) or [])
+        linked_count = len(getattr(packet, "linked_resource_ids", []) or [])
+        score = max(0.0, min(1.0, float(raw_confidence or 0.0)))
+        score += min(0.15, 0.03 * max(1, evidence_count))
+        score += min(0.05, 0.01 * max(1, linked_count))
+        if errors:
+            score = min(score, 0.3)
+        if status is None:
+            score = min(score, 0.25)
+        if missing:
+            score = max(0.05, score - (0.03 * min(5, len(missing))))
+        if getattr(packet, "authorized_deletion", True) and status == "NOT_APPLICABLE":
+            score = 0.0
+        return min(1.0, max(0.0, score))
+
     def reason(self, packet, allowed_evidence_ids, client=None, usage_tracker=None):
         raise NotImplementedError
 
@@ -101,6 +117,14 @@ class SchemaConstrainedModelReasoner(Reasoner):
 
         status = parsed.get("deletion_status")
         status = status if status in {"COMPLETE", "INCOMPLETE", "NOT_APPLICABLE"} else None
+
+        confidence = self._calibrate_confidence(
+            packet=packet,
+            status=status,
+            missing=missing,
+            errors=call.error is not None,
+            raw_confidence=confidence,
+        )
 
         return AuditDecision(
             case_id=parsed.get("case_id", packet.case_id),

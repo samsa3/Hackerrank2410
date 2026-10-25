@@ -160,21 +160,46 @@ class AIAuditPipeline:
                 authorized = _deterministic_result(row, "authorized", True) if False else True
 
             errors: List[str] = []
+            try:
+                minimum_model_confidence = float(os.getenv("AI_MIN_CONFIDENCE", "0.65"))
+            except ValueError:
+                minimum_model_confidence = 0.65
+            candidate_confidence = 0.0
+            model_errors = list(trace.get("validation_errors") or []) if trace else []
+            try:
+                candidate_confidence = float(decision.get("confidence", 0.0))
+            except (TypeError, ValueError):
+                candidate_confidence = 0.0
+
             if authorized is False:
                 model_status = "NOT_APPLICABLE"
+            elif candidate_status in {"COMPLETE", "INCOMPLETE", "NOT_APPLICABLE"} and not model_errors and candidate_confidence >= minimum_model_confidence:
+                model_status = candidate_status
             else:
-                model_status = candidate_status if candidate_status is not None else baseline_status
+                model_status = baseline_status if baseline_status in {"COMPLETE", "INCOMPLETE", "NOT_APPLICABLE"} else None
 
-            # If no valid model answer, use deterministic baseline.
+            # Candidate status is primary when valid. Deterministic evidence only
+            # downgrades when the model is unavailable or fails a basic safety gate.
+            override_reason = ""
+            policy_conflict = False
+            if model_status in {"COMPLETE", "INCOMPLETE"} and baseline_status in {"COMPLETE", "INCOMPLETE"} and model_status != baseline_status:
+                if baseline_status == "INCOMPLETE" and not authorized:
+                    policy_conflict = True
+                else:
+                    # Preserve model candidate in normal operation; baseline
+                    # remains the fallback for safety/validation, not a veto.
+                    policy_conflict = False
+
             if model_status is None:
                 final_status = baseline_status if baseline_status in {"COMPLETE", "INCOMPLETE", "NOT_APPLICABLE"} else "INCOMPLETE"
+                override_reason = "baseline used because no valid in-threshold model status existed"
             else:
-                # Conservative override: when a case has at least one unresolved linked
-                # resource, let deterministic evidence make the status stricter than a
-                # model opinion.
                 final_status = model_status
-                if baseline_status in {"COMPLETE", "INCOMPLETE"} and model_status != baseline_status:
+                if policy_conflict:
                     final_status = baseline_status
+                    override_reason = "deterministic safety gate disagreed with model on an unauthorized case"
+                else:
+                    override_reason = "model status accepted" if model_status == candidate_status else "baseline fallback used"
 
             if final_status == "NOT_APPLICABLE":
                 final_steps = []
@@ -218,8 +243,14 @@ class AIAuditPipeline:
             trace["decision"]["model_status"] = candidate_status
             trace["decision"]["baseline_status"] = baseline_status
             trace["decision"]["final_status_source"] = (
-                "deterministic" if final_status == baseline_status and model_status != baseline_status else "ai+baseline"
+                "ai" if model_status is not None and final_status == model_status and model_status != baseline_status
+                else ("deterministic" if final_status == baseline_status and model_status not in (None, final_status) else "ai+baseline")
             )
+            trace["decision"]["override_policy"] = "candidate_preserved_unless_unsafe"
+            trace["decision"]["override_reason"] = override_reason
+            trace["decision"]["candidate_confidence"] = candidate_confidence
+            trace["decision"]["candidate_validity"] = "valid" if candidate_status in {"COMPLETE","INCOMPLETE","NOT_APPLICABLE"} and not model_errors else "invalid"
+
             trace["validation_errors"] = list(dict.fromkeys(model_errors + row_errors))
             if trace_write:
                 self.orchestrator.append_trace(self.config.trace_path, trace)
