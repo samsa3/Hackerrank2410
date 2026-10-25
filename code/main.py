@@ -57,6 +57,8 @@ def _run_sample_check(config) -> int:
     status_mismatches = 0
     step_mismatches = 0
     candidate_disagreements = 0
+    status_mismatch_cases = []
+    step_mismatch_cases = []
     for row in rows:
         _trace, result = pipeline.orchestrator.run_case(row, run_id=run_id, usage_tracker=usage_tracker)
         trace = None
@@ -73,6 +75,7 @@ def _run_sample_check(config) -> int:
 
         if str(result.get("deletion_status")) != str(expected.get("deletion_status")):
             status_mismatches += 1
+            status_mismatch_cases.append((row["case_id"], result.get("deletion_status"), expected.get("deletion_status"), candidate_status))
 
         if candidate_status is not None and baseline_status is not None and candidate_status != baseline_status:
             candidate_disagreements += 1
@@ -87,8 +90,16 @@ def _run_sample_check(config) -> int:
             expected_steps = None
         if actual_steps != expected_steps:
             step_mismatches += 1
+            step_mismatch_cases.append(row["case_id"])
 
+    if status_mismatch_cases:
+        print("[sample-check] status mismatch details:")
+        for case_id, actual, expected, candidate in status_mismatch_cases[:20]:
+            print(f"  {case_id}: actual={actual}, expected={expected}, candidate={candidate}")
+    if step_mismatch_cases:
+        print("[sample-check] first step-mismatch case ids:", step_mismatch_cases[:10])
     print(f"[sample-check] rows={len(rows)} compared={len(expected_by_case)} status_mismatches={status_mismatches} step_mismatches={step_mismatches} candidate_disagreements={candidate_disagreements}")
+    print("[sample-check] A candidate_disagreements of 0 plus 11 status mismatches suggests baseline-scaffold/probable authorized-case handling rather than raw model output error.")
     print("[sample-check] compare final status first; step mismatches can reflect baseline-source alignment as much as model quality.")
     return 0
 
