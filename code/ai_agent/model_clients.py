@@ -143,6 +143,7 @@ class OllamaModelClient:
                 {"role": "user", "content": user_prompt},
             ],
             "stream": False,
+            "think": False,
             "options": {
                 "temperature": 0.0,
                 "num_predict": 1024,
