@@ -9,3 +9,4 @@ code/ai_agent/ai_agent_output.csv
 code/ai_agent/ai_agent_run_trace.jsonl
 code/ai_agent/ai_agent_usage.json
 *.jsonl
+ai_agent_failure.txt
