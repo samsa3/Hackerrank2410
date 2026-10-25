@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "/root/Hackerrank_challenge/code/main.py", line 32, in main
+    from code.ai_agent.config import default_config
+  File "/root/Hackerrank_challenge/code/ai_agent/__init__.py", line 2, in <module>
+    from .pipeline import AIAuditPipeline, build_pipeline
+  File "/root/Hackerrank_challenge/code/ai_agent/pipeline.py", line 21, in <module>
+    from .proofs import build_attestation, write_attestation
+  File "/root/Hackerrank_challenge/code/ai_agent/proofs.py", line 211, in <module>
+    EOF
+NameError: name 'EOF' is not defined

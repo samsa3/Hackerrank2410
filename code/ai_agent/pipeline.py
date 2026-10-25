@@ -12,8 +12,13 @@ from typing import Any, Dict, List, Optional
 from .config import AgentConfig
 from .model_clients import create_model_client_from_env, UsageTracker, PricingProvider
 from .orchestration import CaseOrchestrator
-from .reasoner import DeterministicFallbackReasoner, SchemaConstrainedModelReasoner
+from .reasoner import (
+    DeterministicFallbackReasoner,
+    SchemaConstrainedModelReasoner,
+    TwoPassReasoner,
+)
 from .validators import validate_output_row, validate_output_rows
+from .proofs import build_attestation, write_attestation
 
 
 class AIAuditPipeline:
@@ -42,7 +47,7 @@ class AIAuditPipeline:
             if health_error is not None:
                 return DeterministicFallbackReasoner(), None
 
-        return SchemaConstrainedModelReasoner(
+        return TwoPassReasoner(
             max_repair_calls=config.model.max_retries,
             max_output_tokens=config.model.max_output_tokens,
         ), client
@@ -265,6 +270,21 @@ class AIAuditPipeline:
                 handle,
                 indent=2,
             )
+
+        attestation = build_attestation(
+            run_id=run_id,
+            model_provider=self.config.model.resolved_provider(),
+            model_name=self.config.model.resolved_model(),
+            requested_cases=len(rows),
+            produced_rows=final_rows,
+            evidence_ids=getattr(getattr(self.orchestrator.packet_builder, "index", None), "evidence_ids", set()),
+            validation_error_count=validation_error_count,
+            trace_path=self.config.trace_path if trace_write else None,
+            output_path=self.config.output_path,
+            usage_path=usage_path,
+        )
+        attestation_path = self.config.project_root / "code" / "ai_agent" / "attestation.json"
+        write_attestation(attestation, attestation_path)
 
         aggregate_errors = []
         errors = []

@@ -167,6 +167,7 @@ def collect_metrics(
             details.append("steps differ")
         if not citation_ok:
             details.append("citation invalid")
+        details.extend(classify_failure(status_ok=status_ok, steps_ok=steps_ok, citation_ok=citation_ok))
         mismatches.append(f"{case_id}: " + "; ".join(details))
 
     denom = counts.total or 1
@@ -208,3 +209,25 @@ def write_report(report: EvaluationReport, path: Path) -> None:
     chunks.extend(["", "## Notes"])
     chunks.extend(f"- {note}" for note in report.notes)
     path.write_text("\n".join(chunks) + "\n", encoding="utf-8")
+
+
+# Failure-decomposition taxonomy, aligned to benchmark research on agent tool failures.
+class FailureMode:
+    STATUS_MISMATCH = "status_mismatch"
+    STEP_MISMATCH = "step_mismatch"
+    CITATION_MISMATCH = "citation_mismatch"
+    STRUCTURE_MISMATCH = "structure_mismatch"
+    AVAILABLE_MODEL_ONLY = "available_model_only"
+
+
+def classify_failure(*, status_ok: bool, steps_ok: bool, citation_ok: bool, structure_ok: bool = True) -> List[str]:
+    failures: List[str] = []
+    if not status_ok:
+        failures.append(FailureMode.STATUS_MISMATCH)
+    if not steps_ok:
+        failures.append(FailureMode.STEP_MISMATCH)
+    if not citation_ok:
+        failures.append(FailureMode.CITATION_MISMATCH)
+    if not structure_ok:
+        failures.append(FailureMode.STRUCTURE_MISMATCH)
+    return failures

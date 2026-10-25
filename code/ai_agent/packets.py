@@ -47,6 +47,8 @@ class CasePacket:
     linked_resource_ids: List[str] = field(default_factory=list)
     omitted_records: List[Dict[str, str]] = field(default_factory=list)
     identity_notes: List[str] = field(default_factory=list)
+    derivation_edges: List[Dict[str, Any]] = field(default_factory=list)
+    provenance: Dict[str, Any] = field(default_factory=dict)
 
 # Load the existing deterministic helper module without needing `code/__init__.py`.
 _DETERMINISTIC_PATH = PROJECT_ROOT / "code" / "deterministic_main.py"
@@ -174,6 +176,13 @@ class CasePacketBuilder:
         # Sort selected records in a deterministic secondary order for later prompts.
         selected_records.sort(key=lambda r: (r.system_id, r.resource_id))
 
+        derivation_edges = self._build_derivation_edges(
+            user_id=user_id,
+            selected_records=selected_records,
+            linked_resource_ids=mapped_resources,
+            omitted_records=omitted_records,
+        )
+
         return CasePacket(
             case_id=case_id,
             email=request_row["email"],
@@ -185,7 +194,76 @@ class CasePacketBuilder:
             linked_resource_ids=mapped_resources,
             omitted_records=omitted_records,
             identity_notes=self._identity_notes(user_id),
+            derivation_edges=derivation_edges,
+            provenance=self._provenance_tags(selected_records=selected_records, identity_count=len(self._identity_notes(user_id))),
         )
+
+    @staticmethod
+    def _build_derivation_edges(
+        *,
+        user_id: Optional[str],
+        selected_records: List["IndexedRecord"],
+        linked_resource_ids: List[str],
+        omitted_records: List[Dict[str, str]],
+    ) -> List[Dict[str, Any]]:
+        """Create deterministic transitive edges for resources and recurrence risk."""
+        edges: List[Dict[str, Any]] = []
+        for resource_id in sorted(linked_resource_ids):
+            source = next((record.file_id for record in selected_records if record.resource_id == resource_id), None)
+            edges.append(
+                {
+                    "from": "resolved_identity" if user_id else "unknown_identity",
+                    "to": resource_id,
+                    "edge_type": "resource_maps_to_user",
+                    "source_file_id": source,
+                    "audit_relevance": "in_scope",
+                }
+            )
+        for omitted in omitted_records:
+            edges.append(
+                {
+                    "from": omitted.get("resource_id"),
+                    "to": omitted.get("file_id"),
+                    "edge_type": "evidence_excluded_by_audit_at",
+                    "reason": omitted.get("reason"),
+                    "audit_relevance": "informational",
+                }
+            )
+        for record in selected_records:
+            lower_system = str(record.system_id).lower()
+            lower_resource = str(record.resource_id).lower()
+            lower_category = str(record.data_category or "").upper()
+            if lower_system in ("integration_service", "export_service") or lower_resource.startswith(("flow_", "data_flow_")):
+                edges.append(
+                    {
+                        "from": str(record.resource_id),
+                        "to": record.system_id,
+                        "edge_type": "recreation_risk_candidate",
+                        "source_file_id": record.file_id,
+                        "audit_relevance": "requires_active_flow_check",
+                    }
+                )
+            if lower_category == "BACKUP_ARCHIVE":
+                edges.append(
+                    {
+                        "from": record.resource_id,
+                        "to": record.file_id,
+                        "edge_type": "backup_retention_candidate",
+                        "source_file_id": record.file_id,
+                        "audit_relevance": "requires_restore_check",
+                    }
+                )
+        return edges
+
+    @staticmethod
+    def _provenance_tags(*, selected_records: List["IndexedRecord"], identity_count: int) -> Dict[str, Any]:
+        return {
+            "origin": "DeterministicEvidenceIndex",
+            "identity_sources": identity_count,
+            "record_count": len(selected_records),
+            "citation_rule": "file_id/activity_id/audit_id",
+            "visibility": "deterministic_only",
+        }
 
     def build_packets(self, rows: List[Dict[str, str]]) -> List[CasePacket]:
         return [self.build_packet(row) for row in rows]

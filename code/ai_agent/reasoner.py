@@ -112,6 +112,53 @@ class SchemaConstrainedModelReasoner(Reasoner):
         )
 
 
+class TwoPassReasoner(Reasoner):
+    """Transparent two-pass reasoner: extraction first, deterministic policy pass second.
+
+    The first pass is the existing schema-constrained model stage. The second pass
+    does not call another model; it adds deterministic provenance and consistency
+    checks around the first decision before returning it.
+    """
+
+    def __init__(self, max_repair_calls: int = 1, max_output_tokens: int = 1024) -> None:
+        self.base = SchemaConstrainedModelReasoner(
+            max_repair_calls=max_repair_calls,
+            max_output_tokens=max_output_tokens,
+        )
+
+    @staticmethod
+    def _policy_pass(packet, decision):
+        from .schema import AuditDecision
+
+        missing = list(decision.missing_evidence or [])
+        if getattr(packet, "authorized_deletion", True):
+            if decision.deletion_status == "NOT_APPLICABLE":
+                missing.append("policy pass: authorized case cannot be NOT_APPLICABLE")
+            if not getattr(packet, "records", []):
+                missing.append("policy pass: no pre-audit evidence was available")
+
+        return AuditDecision(
+            case_id=decision.case_id,
+            deletion_status=decision.deletion_status,
+            relevant_resources=decision.relevant_resources,
+            missing_evidence=list(dict.fromkeys(missing)),
+            confidence=decision.confidence,
+            reasoning_summary=(decision.reasoning_summary or "") + " | passes=extraction+deterministic-policy",
+            steps=decision.steps,
+        )
+
+    def reason(self, packet, allowed_evidence_ids, client=None, usage_tracker=None):
+        extraction_result = self.base.reason(
+            packet=packet,
+            allowed_evidence_ids=allowed_evidence_ids,
+            client=client,
+            usage_tracker=usage_tracker,
+        )
+        if client is None:
+            return extraction_result
+        return self._policy_pass(packet, extraction_result)
+
+
 class DeterministicFallbackReasoner(Reasoner):
     def reason(self, packet, allowed_evidence_ids, client=None, usage_tracker=None):
         return AuditDecision(

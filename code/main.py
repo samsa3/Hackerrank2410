@@ -36,6 +36,7 @@ def main() -> int:
             UsageTracker,
         )
         from code.ai_agent.pipeline import build_pipeline
+        from code.ai_agent.proofs import promote_output_atomically
 
         config = default_config()
         client, _pricing = create_model_client_from_env()
@@ -83,8 +84,15 @@ def main() -> int:
             ai_output = config.output_path
             if ai_output.exists() and ai_output.is_file():
                 if os.getenv("MAIN_PROMOTE_ROOT_OUTPUT", "0").lower() in {"1", "true", "yes"}:
-                    shutil.copy2(ai_output, ROOT / "output.csv")
-                    print("[AI] Promoted to root output.csv because MAIN_PROMOTE_ROOT_OUTPUT=1")
+                    manifest = promote_output_atomically(
+                        source=ai_output,
+                        destination=ROOT / "output.csv",
+                        valid_rows=produced_rows,
+                    )
+                    print(
+                        "[AI] Promoted output.csv atomically: "
+                        f"rows={manifest.valid_rows}, digest={manifest.digest}"
+                    )
                 print(f"[AI] Wrote {produced_rows} valid rows to {config.output_path}")
                 return 0
     except Exception:
