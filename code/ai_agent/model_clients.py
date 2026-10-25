@@ -86,7 +86,11 @@ class OllamaModelClient:
         self.model = model
         self.timeout_seconds = timeout_seconds
         self.think = os.getenv("OLLAMA_THINK", "false").strip().lower() in {"1", "true", "yes"}
-        self.max_output_tokens = max(256, min(int(os.getenv("MAX_OUTPUT_TOKENS", "1024")), 4096))
+        try:
+            max_tokens = int(os.getenv("MAX_OUTPUT_TOKENS", "1024"))
+        except (TypeError, ValueError):
+            max_tokens = 1024
+        self.max_output_tokens = max(256, min(max_tokens, 4096))
 
     def health_check(self, attempts=3, delay_seconds=1.0):
         last_error = None
