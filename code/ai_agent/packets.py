@@ -268,6 +268,68 @@ class CasePacketBuilder:
     def build_packets(self, rows: List[Dict[str, str]]) -> List[CasePacket]:
         return [self.build_packet(row) for row in rows]
 
+    @staticmethod
+    def classify_missing_evidence(
+        packet: CasePacket, candidate_missing: Optional[List[str]] = None
+    ) -> List[Dict[str, Any]]:
+        """Explain deterministic causes for candidate missing evidence."""
+        candidate_missing = [str(item) for item in (candidate_missing or [])]
+        allowed = {
+            record.source_file_id
+            for record in getattr(packet, "records", [])
+            if getattr(record, "source_file_id", None)
+        }
+        indexed = list(getattr(packet, "records", []) or [])
+        outcome: List[Dict[str, Any]] = []
+
+        known_resources = {record.resource_id: record.source_file_id for record in indexed}
+        omitted_by_resource = {
+            entry.get("resource_id"): entry for entry in getattr(packet, "omitted_records", [])
+            if isinstance(entry, dict)
+        }
+
+        for missing in candidate_missing:
+            diagnosis = "unresolved_identifier"
+            kind = "unknown"
+            candidate_blocking = True
+            if "policy pass" in missing.lower():
+                diagnosis = "artifact_from_candidate_validation"
+                kind = "policy_artifact"
+                candidate_blocking = False
+            elif missing in omitted_by_resource.get(missing, {}):
+                diagnosis = omitted_by_resource.get(missing, {}).get("reason", "excluded by audit cutoff")
+                kind = "future_evidence"
+            elif missing in allowed or missing in known_resources.values():
+                diagnosis = "listed but not consumed during packet assembly"
+                kind = "unused_allowed_evidence"
+                candidate_blocking = False
+            elif missing in known_resources:
+                diagnosis = "record mapped to the user but still missing required policy state"
+                kind = "partial_constraint"
+            else:
+                # Common gap: a linked resource has no before-audit evidence.
+                unknown_links = []
+                for resource_id in getattr(packet, "linked_resource_ids", []):
+                    if resource_id not in known_resources:
+                        unknown_links.append(resource_id)
+                if unknown_links:
+                    diagnosis = "no pre-audit evidence; conserve treatment until audit observation is available"
+                    kind = "missing_before_audit_evidence"
+                    candidate_blocking = True
+                else:
+                    diagnosis = "no deterministic root cause mapped from current evidence"
+                    kind = "unknown"
+
+            outcome.append(
+                {
+                    "missing_identifier": missing,
+                    "classification": kind,
+                    "reason": diagnosis,
+                    "blocking": candidate_blocking,
+                }
+            )
+        return outcome
+
     def deterministic_status(self, packet: CasePacket, index: DeterministicEvidenceIndex) -> str:
         if not packet.authorized_deletion:
             return "NOT_APPLICABLE"
