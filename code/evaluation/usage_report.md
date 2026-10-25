@@ -2,7 +2,7 @@
 
 ## Final Full-Dataset Run
 - Source: latest generated `code/ai_agent/ai_agent_usage.json` and/or run trace.
-- Diagnostics cases: 5
+- Diagnostics cases: 518
 - Output rows: 518
 - Routing: candidates were validated against deterministic status and packet evidence in trace diagnostics.
 
@@ -11,15 +11,15 @@
 - Model: qwen3.5:9b-q4_K_M
 
 ## Model Calls
-- calls: 5
-- successful_calls: 5
-- failed_calls: 0
+- calls: 508
+- successful_calls: 507
+- failed_calls: 1
 
 ## Tokens
-- input_tokens_estimate: 3053
-- output_tokens_estimate: 948
-- total_tokens_estimate: 4001
-- average_tokens_per_request: 7.723938223938224
+- input_tokens_estimate: 312665
+- output_tokens_estimate: 97619
+- total_tokens_estimate: 410284
+- average_tokens_per_request: 792.0540540540541
 
 ## Cost
 - estimated cost: 0.0 USD under local Ollama placeholder pricing.
